@@ -27,7 +27,9 @@ A comprehensive multi-step vendor registration form plugin for WordPress that co
 - **GST Number**: Validates 15-character GST format
 - **IFSC Code**: Validates bank IFSC format
 - **Required Fields**: Highlights missing required fields
+- **Radio/Checkbox Highlighting**: Visual red border and background for unchecked required groups
 - Visual feedback with error messages
+- Auto-navigation to first missing field on submission
 
 ### 4. File Upload Management
 - **File Size Limit**: Maximum 2MB per file
@@ -43,12 +45,19 @@ A comprehensive multi-step vendor registration form plugin for WordPress that co
 
 ### 5. Toast Notifications
 - **Success Messages**: Green toast for successful submissions
-- **Error Messages**: Red toast for validation errors
+- **Error Messages**: Red toast for validation errors with field names
 - **Info Messages**: Blue toast for progress updates
+- **Field-Specific Alerts**: Toast messages include field names (e.g., "Vendor Type: Please select at least one option")
 - Auto-dismiss after 3 seconds
 - Smooth animations
 
-### 6. Admin Dashboard Features
+### 6. Email Notifications
+- **User Acknowledgement**: Automated thank you email sent to user with confirmation
+- **Admin Notification**: Detailed email with all form data and attached files
+- **Professional Templates**: HTML-formatted emails with POEL branding
+- **File Attachments**: All uploaded documents attached to admin email
+
+### 7. Admin Dashboard Features
 - **Custom Post Type**: Stores all registrations in 'registrations' CPT
 - **Custom Columns**:
   - Form Type (Vendor/Customer)
@@ -59,7 +68,7 @@ A comprehensive multi-step vendor registration form plugin for WordPress that co
 - **Filtering**: Filter registrations by form type
 - **Download Links**: Direct download access to all uploaded documents
 
-### 7. Security Features
+### 8. Security Features
 - CSRF protection with WordPress nonces
 - Sanitized input data
 - Secure file upload handling
@@ -162,14 +171,22 @@ All form data is stored as post meta:
 - jQuery (included with WordPress)
 - PHP 7.0+
 
+## Recent Enhancements (v1.1)
+- ✅ **Email Notifications**: User acknowledgement and admin notification with files
+- ✅ **Field-Level Toast Alerts**: Toast messages now include specific field names
+- ✅ **Radio/Checkbox Highlighting**: Visual indicators for required selections
+- ✅ **Enhanced Navigation**: Auto-jump to first missing field on submission
+
+For detailed information about these enhancements, see [ENHANCEMENTS.md](ENHANCEMENTS.md)
+
 ## Future Enhancements
 This plugin is designed to be extensible. Future versions may include:
 - Customer registration form variant
 - Export functionality for registrations
-- Email notifications
-- Custom email templates
+- Custom email templates with admin UI
 - Additional location data
 - Integration with CRM systems
+- SMS notifications
 
 ## Author
 Developed with GitHub Copilot

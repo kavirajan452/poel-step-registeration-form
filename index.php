@@ -2,7 +2,7 @@
 /*
 Plugin Name: Vendor & Customer Registration Forms
 Description: Multi-step vendor and customer registration forms with shortcodes, stores submissions as custom post type 'registrations' with file attachments and displays downloads in admin.
-Version: 1.1
+Version: 1.2
 Author: GitHub Copilot (adapted)
 */
 

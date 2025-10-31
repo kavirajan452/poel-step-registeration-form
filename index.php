@@ -150,9 +150,12 @@ class VRF_Plugin {
                         <label>Country</label>
                         <select name="country" id="vrf-country">
                             <option value="">Select Country</option>
-                            <option value="India">India</option>
-                            <option value="USA">USA</option>
-                            <option value="UK">UK</option>
+                            <?php
+                            $countries = $this->get_countries();
+                            foreach ( $countries as $country ) {
+                                echo '<option value="' . esc_attr( $country['name'] ) . '">' . esc_html( $country['name'] ) . '</option>';
+                            }
+                            ?>
                         </select>
                     </div>
 
@@ -465,9 +468,12 @@ class VRF_Plugin {
                         <label>Country *</label>
                         <select name="country" id="crf-country" required>
                             <option value="">Select Country</option>
-                            <option value="India">India</option>
-                            <option value="USA">USA</option>
-                            <option value="UK">UK</option>
+                            <?php
+                            $countries = $this->get_countries();
+                            foreach ( $countries as $country ) {
+                                echo '<option value="' . esc_attr( $country['name'] ) . '">' . esc_html( $country['name'] ) . '</option>';
+                            }
+                            ?>
                         </select>
                     </div>
 
@@ -1113,74 +1119,81 @@ class VRF_Plugin {
     // AJAX handler for getting states based on country
     public function ajax_get_states() {
         check_ajax_referer( 'vrf_nonce', 'nonce' );
+        global $wpdb;
+        
         $country = isset( $_POST['country'] ) ? sanitize_text_field( $_POST['country'] ) : '';
         
-        $states = array();
-        if ( $country === 'India' ) {
-            $states = array(
-                'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-                'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
-                'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
-                'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
-                'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
-                'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
-            );
-        } elseif ( $country === 'USA' ) {
-            $states = array(
-                'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
-                'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia',
-                'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
-                'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland',
-                'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
-                'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey',
-                'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
-                'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina',
-                'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
-                'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
-            );
-        } elseif ( $country === 'UK' ) {
-            $states = array(
-                'England', 'Scotland', 'Wales', 'Northern Ireland'
-            );
+        if ( empty( $country ) ) {
+            wp_send_json_success( array( 'states' => array() ) );
+            return;
         }
         
-        wp_send_json_success( array( 'states' => $states ) );
+        $countries_table = $wpdb->prefix . 'vrf_countries';
+        $states_table = $wpdb->prefix . 'vrf_states';
+        
+        // Get country ID
+        $country_id = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM $countries_table WHERE name = %s",
+            $country
+        ) );
+        
+        if ( ! $country_id ) {
+            wp_send_json_success( array( 'states' => array() ) );
+            return;
+        }
+        
+        // Get states for this country
+        $states = $wpdb->get_results( $wpdb->prepare(
+            "SELECT name FROM $states_table WHERE country_id = %d ORDER BY name ASC",
+            $country_id
+        ), ARRAY_A );
+        
+        $state_names = array();
+        foreach ( $states as $state ) {
+            $state_names[] = $state['name'];
+        }
+        
+        wp_send_json_success( array( 'states' => $state_names ) );
     }
 
     // AJAX handler for getting cities based on state
     public function ajax_get_cities() {
         check_ajax_referer( 'vrf_nonce', 'nonce' );
+        global $wpdb;
+        
         $state = isset( $_POST['state'] ) ? sanitize_text_field( $_POST['state'] ) : '';
         
-        $cities = array();
-        // Sample cities for major Indian states
-        if ( $state === 'Tamil Nadu' ) {
-            $cities = array('Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli');
-        } elseif ( $state === 'Maharashtra' ) {
-            $cities = array('Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad');
-        } elseif ( $state === 'Karnataka' ) {
-            $cities = array('Bangalore', 'Mysore', 'Mangalore', 'Hubli', 'Belgaum', 'Gulbarga');
-        } elseif ( $state === 'Delhi' ) {
-            $cities = array('New Delhi', 'Central Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi');
-        } elseif ( $state === 'Gujarat' ) {
-            $cities = array('Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar');
-        } elseif ( $state === 'Rajasthan' ) {
-            $cities = array('Jaipur', 'Jodhpur', 'Kota', 'Udaipur', 'Ajmer', 'Bikaner');
-        } elseif ( $state === 'Uttar Pradesh' ) {
-            $cities = array('Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut');
-        } elseif ( $state === 'West Bengal' ) {
-            $cities = array('Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri');
-        } elseif ( $state === 'California' ) {
-            $cities = array('Los Angeles', 'San Francisco', 'San Diego', 'San Jose', 'Sacramento');
-        } elseif ( $state === 'New York' ) {
-            $cities = array('New York City', 'Buffalo', 'Rochester', 'Yonkers', 'Syracuse');
-        } elseif ( $state === 'Texas' ) {
-            $cities = array('Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth');
-        } elseif ( $state === 'England' ) {
-            $cities = array('London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds');
+        if ( empty( $state ) ) {
+            wp_send_json_success( array( 'cities' => array() ) );
+            return;
         }
         
-        wp_send_json_success( array( 'cities' => $cities ) );
+        $states_table = $wpdb->prefix . 'vrf_states';
+        $cities_table = $wpdb->prefix . 'vrf_cities';
+        
+        // Get state ID
+        $state_id = $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM $states_table WHERE name = %s",
+            $state
+        ) );
+        
+        if ( ! $state_id ) {
+            wp_send_json_success( array( 'cities' => array() ) );
+            return;
+        }
+        
+        // Get cities for this state
+        $cities = $wpdb->get_results( $wpdb->prepare(
+            "SELECT name FROM $cities_table WHERE state_id = %d ORDER BY name ASC",
+            $state_id
+        ), ARRAY_A );
+        
+        $city_names = array();
+        foreach ( $cities as $city ) {
+            $city_names[] = $city['name'];
+        }
+        
+        wp_send_json_success( array( 'cities' => $city_names ) );
     }
 
     // Add meta boxes to registration post edit screen
@@ -1384,6 +1397,147 @@ class VRF_Plugin {
         echo '</table>';
     }
 
+    // Get countries from database
+    private function get_countries() {
+        global $wpdb;
+        $countries_table = $wpdb->prefix . 'vrf_countries';
+        
+        $countries = $wpdb->get_results(
+            "SELECT id, name FROM $countries_table ORDER BY name ASC",
+            ARRAY_A
+        );
+        
+        return $countries;
+    }
+
+    // Database setup for location tables
+    public static function activate() {
+        global $wpdb;
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        // Create countries table
+        $countries_table = $wpdb->prefix . 'vrf_countries';
+        $sql_countries = "CREATE TABLE IF NOT EXISTS $countries_table (
+            id mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+            name varchar(100) NOT NULL,
+            iso3 char(3) DEFAULT NULL,
+            numeric_code char(3) DEFAULT NULL,
+            iso2 char(2) DEFAULT NULL,
+            phonecode varchar(255) DEFAULT NULL,
+            capital varchar(255) DEFAULT NULL,
+            currency varchar(255) DEFAULT NULL,
+            currency_name varchar(255) DEFAULT NULL,
+            currency_symbol varchar(255) DEFAULT NULL,
+            PRIMARY KEY (id)
+        ) $charset_collate;";
+        
+        // Create states table
+        $states_table = $wpdb->prefix . 'vrf_states';
+        $sql_states = "CREATE TABLE IF NOT EXISTS $states_table (
+            id mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            country_id mediumint(8) unsigned NOT NULL,
+            country_code char(2) NOT NULL,
+            state_code varchar(255) DEFAULT NULL,
+            PRIMARY KEY (id),
+            KEY country_id (country_id)
+        ) $charset_collate;";
+        
+        // Create cities table
+        $cities_table = $wpdb->prefix . 'vrf_cities';
+        $sql_cities = "CREATE TABLE IF NOT EXISTS $cities_table (
+            id mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+            name varchar(255) NOT NULL,
+            state_id mediumint(8) unsigned NOT NULL,
+            state_code varchar(255) NOT NULL,
+            country_id mediumint(8) unsigned NOT NULL,
+            country_code char(2) NOT NULL,
+            PRIMARY KEY (id),
+            KEY state_id (state_id),
+            KEY country_id (country_id)
+        ) $charset_collate;";
+        
+        require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
+        dbDelta( $sql_countries );
+        dbDelta( $sql_states );
+        dbDelta( $sql_cities );
+        
+        // Check if data needs to be imported
+        $countries_count = $wpdb->get_var( "SELECT COUNT(*) FROM $countries_table" );
+        if ( $countries_count == 0 ) {
+            self::import_location_data();
+        }
+    }
+    
+    // Import location data from SQL files
+    private static function import_location_data() {
+        global $wpdb;
+        
+        $plugin_dir = plugin_dir_path( __FILE__ );
+        
+        // Import countries
+        $countries_file = $plugin_dir . 'assets/countries.sql';
+        if ( file_exists( $countries_file ) ) {
+            $sql = file_get_contents( $countries_file );
+            
+            // Replace table name in SQL
+            $sql = str_replace( 'countries', $wpdb->prefix . 'vrf_countries', $sql );
+            
+            // Remove foreign key constraints and references to other tables
+            $sql = preg_replace( '/CONSTRAINT.*?FOREIGN KEY.*?\n/s', '', $sql );
+            $sql = preg_replace( '/,\s*KEY.*?region.*?\n/s', '', $sql );
+            
+            // Execute SQL in chunks to avoid memory issues
+            $statements = explode( ';', $sql );
+            foreach ( $statements as $statement ) {
+                $statement = trim( $statement );
+                if ( ! empty( $statement ) && strpos( $statement, 'INSERT INTO' ) !== false ) {
+                    $wpdb->query( $statement );
+                }
+            }
+        }
+        
+        // Import states
+        $states_file = $plugin_dir . 'assets/states.sql';
+        if ( file_exists( $states_file ) ) {
+            $sql = file_get_contents( $states_file );
+            
+            // Replace table name in SQL
+            $sql = str_replace( 'states', $wpdb->prefix . 'vrf_states', $sql );
+            
+            // Execute SQL in chunks
+            $statements = explode( ';', $sql );
+            foreach ( $statements as $statement ) {
+                $statement = trim( $statement );
+                if ( ! empty( $statement ) && strpos( $statement, 'INSERT INTO' ) !== false ) {
+                    $wpdb->query( $statement );
+                }
+            }
+        }
+        
+        // Import cities
+        $cities_file = $plugin_dir . 'assets/cities.sql';
+        if ( file_exists( $cities_file ) ) {
+            $sql = file_get_contents( $cities_file );
+            
+            // Replace table name in SQL
+            $sql = str_replace( 'cities', $wpdb->prefix . 'vrf_cities', $sql );
+            
+            // Execute SQL in chunks
+            $statements = explode( ';', $sql );
+            foreach ( $statements as $statement ) {
+                $statement = trim( $statement );
+                if ( ! empty( $statement ) && strpos( $statement, 'INSERT INTO' ) !== false ) {
+                    $wpdb->query( $statement );
+                }
+            }
+        }
+    }
+
 }
 
 new VRF_Plugin();
+
+// Register activation hook
+register_activation_hook( __FILE__, array( 'VRF_Plugin', 'activate' ) );

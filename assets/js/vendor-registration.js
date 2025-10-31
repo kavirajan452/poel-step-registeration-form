@@ -3,9 +3,6 @@
         var $form = $('#vendor-registration-form');
         var $panels = $('.vrf-panel');
         var current = 1;
-        
-        // Trigger country change on page load to populate states for India
-        $('#vrf-country').trigger('change');
 
         // Toast notification function
         function showToast(message, type) {
@@ -198,14 +195,14 @@
             $(this).closest('.vrf-row').removeClass('vrf-field-required');
         });
 
-        // GST Registration conditional fields
-        $('input[name="gst_registered"]').on('change', function() {
+        // GST Registration conditional fields - scoped to vendor form
+        $form.find('input[name="gst_registered"]').on('change', function() {
             var isGSTYes = $(this).val() === 'yes';
             toggleConditionalFields('.vrf-gst-fields', '.vrf-gst-conditional, .vrf-gst-conditional-radio', isGSTYes, true);
         });
 
-        // MSME Registration conditional fields
-        $('input[name="msme_registered"]').on('change', function() {
+        // MSME Registration conditional fields - scoped to vendor form
+        $form.find('input[name="msme_registered"]').on('change', function() {
             var isMSMEYes = $(this).val() === 'yes';
             toggleConditionalFields('.vrf-msme-yes-fields', '.vrf-msme-conditional', isMSMEYes, true);
             toggleConditionalFields('.vrf-msme-no-fields', '.vrf-msme-no-conditional', !isMSMEYes, true);
@@ -312,8 +309,8 @@
             
             // Special validation for GST radio buttons (Step 2)
             if (current === 2) {
-                var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
-                var gstRadioChecked = $('input[name="gst_registered"]:checked').length > 0;
+                var $gstRow = $currentPanel.find('input[name="gst_registered"]').first().closest('.vrf-row');
+                var gstRadioChecked = $currentPanel.find('input[name="gst_registered"]:checked').length > 0;
                 if (!gstRadioChecked) {
                     $gstRow.addClass('vrf-field-required');
                     showToast('GST Registration: Please select Yes or No', 'error');
@@ -323,11 +320,11 @@
                 }
                 
                 // If GST is Yes, validate GST conditional radios
-                if ($('input[name="gst_registered"]:checked').val() === 'yes') {
-                    var $einvoiceRow = $('input[name="einvoice_applicability"]').first().closest('.vrf-row');
-                    var $filingRow = $('input[name="return_filing_frequency"]').first().closest('.vrf-row');
-                    var einvoiceChecked = $('input[name="einvoice_applicability"]:checked').length > 0;
-                    var filingChecked = $('input[name="return_filing_frequency"]:checked').length > 0;
+                if ($currentPanel.find('input[name="gst_registered"]:checked').val() === 'yes') {
+                    var $einvoiceRow = $currentPanel.find('input[name="einvoice_applicability"]').first().closest('.vrf-row');
+                    var $filingRow = $currentPanel.find('input[name="return_filing_frequency"]').first().closest('.vrf-row');
+                    var einvoiceChecked = $currentPanel.find('input[name="einvoice_applicability"]:checked').length > 0;
+                    var filingChecked = $currentPanel.find('input[name="return_filing_frequency"]:checked').length > 0;
                     
                     if (!einvoiceChecked) {
                         $einvoiceRow.addClass('vrf-field-required');
@@ -349,8 +346,8 @@
             
             // Special validation for MSME radio buttons (Step 3)
             if (current === 3) {
-                var $msmeRow = $('input[name="msme_registered"]').first().closest('.vrf-row');
-                var msmeRadioChecked = $('input[name="msme_registered"]:checked').length > 0;
+                var $msmeRow = $currentPanel.find('input[name="msme_registered"]').first().closest('.vrf-row');
+                var msmeRadioChecked = $currentPanel.find('input[name="msme_registered"]:checked').length > 0;
                 if (!msmeRadioChecked) {
                     $msmeRow.addClass('vrf-field-required');
                     showToast('MSME Registration: Please select Yes or No', 'error');
@@ -406,8 +403,15 @@
             }
         });
 
+        var isSubmitting = false; // Flag to prevent multiple submissions
+
         $form.on('submit', function(e){
             e.preventDefault();
+
+            // Prevent multiple submissions
+            if (isSubmitting) {
+                return;
+            }
 
             // Validate all required fields
             var allOk = true;
@@ -430,8 +434,8 @@
             }
             
             // Validate vendor type
-            var $vendorTypeRow = $('.vrf-vendor-type').first().closest('.vrf-row');
-            if ($('.vrf-vendor-type:checked').length === 0) {
+            var $vendorTypeRow = $form.find('.vrf-vendor-type').first().closest('.vrf-row');
+            if ($form.find('.vrf-vendor-type:checked').length === 0) {
                 $vendorTypeRow.addClass('vrf-field-required');
                 showToast('Vendor Type: Please select at least one option', 'error');
                 allOk = false;
@@ -440,8 +444,8 @@
             }
             
             // Validate GST radio
-            var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
-            if ($('input[name="gst_registered"]:checked').length === 0) {
+            var $gstRow = $form.find('input[name="gst_registered"]').first().closest('.vrf-row');
+            if ($form.find('input[name="gst_registered"]:checked').length === 0) {
                 $gstRow.addClass('vrf-field-required');
                 showToast('GST Registration: Please select Yes or No', 'error');
                 allOk = false;
@@ -450,8 +454,8 @@
             }
             
             // Validate MSME radio
-            var $msmeRow = $('input[name="msme_registered"]').first().closest('.vrf-row');
-            if ($('input[name="msme_registered"]:checked').length === 0) {
+            var $msmeRow = $form.find('input[name="msme_registered"]').first().closest('.vrf-row');
+            if ($form.find('input[name="msme_registered"]:checked').length === 0) {
                 $msmeRow.addClass('vrf-field-required');
                 showToast('MSME Registration: Please select Yes or No', 'error');
                 allOk = false;
@@ -471,11 +475,17 @@
                 return;
             }
 
+            // Show loader and disable submit button
+            isSubmitting = true;
+            var $submitBtn = $form.find('.vrf-submit');
+            $submitBtn.prop('disabled', true).css('opacity', '0.6');
+            
+            var $loader = $('<div class="vrf-loader-overlay"><div><div class="vrf-loader"></div><div class="vrf-loader-text">Submitting your registration...</div></div></div>');
+            $('body').append($loader);
+
             // Build FormData for AJAX including files
             var fd = new FormData( $form[0] );
             fd.append('action', 'vrf_submit');
-
-            showToast('Submitting your registration...', 'info');
 
             $.ajax({
                 url: vrf_ajax.ajax_url,
@@ -484,6 +494,11 @@
                 contentType: false,
                 processData: false,
                 success: function(resp){
+                    // Remove loader
+                    $loader.remove();
+                    isSubmitting = false;
+                    $submitBtn.prop('disabled', false).css('opacity', '1');
+                    
                     if (resp.success) {
                         showToast(resp.data.message || 'Registration submitted successfully!', 'success');
                         $form[0].reset();
@@ -495,6 +510,11 @@
                     }
                 },
                 error: function(){
+                    // Remove loader
+                    $loader.remove();
+                    isSubmitting = false;
+                    $submitBtn.prop('disabled', false).css('opacity', '1');
+                    
                     showToast('An error occurred during submission. Please try again.', 'error');
                 }
             });

@@ -91,17 +91,17 @@ class VRF_Plugin {
 
                     <div class="vrf-row">
                         <label>Organisation Name *</label>
-                        <input type="text" name="organisation_name" required />
+                        <input type="text" name="organisation_name" placeholder="Company/Trade License/GST Registration Name" required />
                     </div>
 
                     <div class="vrf-row">
-                        <label>Company Registration / Trade License Number *</label>
-                        <input type="text" name="company_registration_number" required />
+                        <label>Company Registration / Trade License Number</label>
+                        <input type="text" name="company_registration_number" />
                     </div>
 
                     <div class="vrf-row">
-                        <label>Company Registration / Trade License file upload *</label>
-                        <input type="file" name="company_registration_file" />
+                        <label>Company Registration / Trade License File Upload *</label>
+                        <input type="file" name="company_registration_file" required />
                     </div>
 
                     <div class="vrf-row">
@@ -123,22 +123,22 @@ class VRF_Plugin {
                         <label>Country</label>
                         <select name="country" id="vrf-country">
                             <option value="">Select Country</option>
-                            <option value="India">India</option>
+                            <option value="India" selected>India</option>
                             <option value="USA">USA</option>
                             <option value="UK">UK</option>
                         </select>
                     </div>
 
                     <div class="vrf-row">
-                        <label>State</label>
-                        <select name="state" id="vrf-state">
+                        <label>State *</label>
+                        <select name="state" id="vrf-state" required>
                             <option value="">Select State</option>
                         </select>
                     </div>
 
                     <div class="vrf-row">
-                        <label>City</label>
-                        <select name="city" id="vrf-city">
+                        <label>City *</label>
+                        <select name="city" id="vrf-city" required>
                             <option value="">Select City</option>
                         </select>
                     </div>
@@ -149,45 +149,45 @@ class VRF_Plugin {
                     </div>
 
                     <div class="vrf-row vrf-checks">
-                        <label>Vendor Type</label>
-                        <label><input type="checkbox" name="vendor_type[]" value="Goods Supplier"> Goods Supplier</label>
-                        <label><input type="checkbox" name="vendor_type[]" value="Service Supplier"> Service Supplier</label>
-                        <label><input type="checkbox" name="vendor_type[]" value="Transporter"> Transporter</label>
-                        <label><input type="checkbox" name="vendor_type[]" value="Other"> Other</label>
+                        <label>Vendor Type *</label>
+                        <label><input type="checkbox" name="vendor_type[]" value="Goods Supplier" class="vrf-vendor-type"> Goods Supplier</label>
+                        <label><input type="checkbox" name="vendor_type[]" value="Service Supplier" class="vrf-vendor-type"> Service Supplier</label>
+                        <label><input type="checkbox" name="vendor_type[]" value="Transporter" class="vrf-vendor-type"> Transporter</label>
+                        <label><input type="checkbox" name="vendor_type[]" value="Other" class="vrf-vendor-type"> Other</label>
                     </div>
 
                     <div class="vrf-row">
-                        <label>Product / Services offered to POEL *</label>
-                        <textarea name="products" rows="5"></textarea>
+                        <label>Product / Services Offered to POEL *</label>
+                        <textarea name="products" rows="5" required></textarea>
                     </div>
 
                     <div class="vrf-row-inline">
                         <div>
                             <label>Purchase Contact Person Name *</label>
-                            <input type="text" name="purchase_contact_name" />
+                            <input type="text" name="purchase_contact_name" required />
                         </div>
                         <div>
                             <label>Purchase Contact Person Phone No *</label>
-                            <input type="text" name="purchase_contact_phone" />
+                            <input type="text" name="purchase_contact_phone" required />
                         </div>
                         <div>
                             <label>Purchase Contact Person Email *</label>
-                            <input type="email" name="purchase_contact_email" />
+                            <input type="email" name="purchase_contact_email" required />
                         </div>
                     </div>
 
                     <div class="vrf-row-inline">
                         <div>
                             <label>Accounts Contact Person Name *</label>
-                            <input type="text" name="accounts_contact_name" />
+                            <input type="text" name="accounts_contact_name" required />
                         </div>
                         <div>
                             <label>Accounts Contact Person Phone No *</label>
-                            <input type="text" name="accounts_contact_phone" />
+                            <input type="text" name="accounts_contact_phone" required />
                         </div>
                         <div>
                             <label>Accounts Contact Person Email *</label>
-                            <input type="email" name="accounts_contact_email" />
+                            <input type="email" name="accounts_contact_email" required />
                         </div>
                     </div>
 
@@ -202,32 +202,46 @@ class VRF_Plugin {
 
                     <div class="vrf-row">
                         <label>GST Registration *</label>
-                        <label><input type="radio" name="gst_registered" value="yes"> Yes</label>
-                        <label><input type="radio" name="gst_registered" value="no" checked> No</label>
+                        <label><input type="radio" name="gst_registered" value="yes" class="vrf-gst-radio" required> Yes</label>
+                        <label><input type="radio" name="gst_registered" value="no" class="vrf-gst-radio" required> No</label>
                     </div>
 
-                    <div class="vrf-row">
-                        <label>GST Registration Number</label>
-                        <input type="text" name="gst_number" />
-                    </div>
+                    <div class="vrf-gst-fields" style="display:none;">
+                        <div class="vrf-row">
+                            <label>GST Registration Number *</label>
+                            <input type="text" name="gst_number" class="vrf-gst-conditional" />
+                        </div>
 
-                    <div class="vrf-row">
-                        <label>Legal Name (as per GST)</label>
-                        <input type="text" name="gst_legal_name" />
-                    </div>
+                        <div class="vrf-row">
+                            <label>Legal Name (as per GST) *</label>
+                            <input type="text" name="gst_legal_name" class="vrf-gst-conditional" />
+                        </div>
 
-                    <div class="vrf-row">
-                        <label>GST Certificate</label>
-                        <input type="file" name="gst_certificate" />
-                    </div>
+                        <div class="vrf-row">
+                            <label>Tax Payer Type *</label>
+                            <select name="taxpayer_type" class="vrf-gst-conditional">
+                                <option value="">Please select</option>
+                                <option value="Regular">Regular</option>
+                                <option value="Composition">Composition</option>
+                            </select>
+                        </div>
 
-                    <div class="vrf-row">
-                        <label>Tax Payer Type</label>
-                        <select name="taxpayer_type">
-                            <option value="">Please select</option>
-                            <option value="Regular">Regular</option>
-                            <option value="Composition">Composition</option>
-                        </select>
+                        <div class="vrf-row">
+                            <label>GST Certificate *</label>
+                            <input type="file" name="gst_certificate" class="vrf-gst-conditional" />
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>E-Invoice Applicability *</label>
+                            <label><input type="radio" name="einvoice_applicability" value="Applicable" class="vrf-gst-conditional-radio"> Applicable</label>
+                            <label><input type="radio" name="einvoice_applicability" value="Non-Applicable" class="vrf-gst-conditional-radio"> Non-Applicable</label>
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>Return Filing Frequency *</label>
+                            <label><input type="radio" name="return_filing_frequency" value="Monthly" class="vrf-gst-conditional-radio"> Monthly</label>
+                            <label><input type="radio" name="return_filing_frequency" value="Quarterly" class="vrf-gst-conditional-radio"> Quarterly</label>
+                        </div>
                     </div>
 
                     <div class="vrf-actions">
@@ -242,28 +256,43 @@ class VRF_Plugin {
 
                     <div class="vrf-row">
                         <label>MSME (Udyam Registration) *</label>
-                        <label><input type="radio" name="msme_registered" value="yes"> Yes</label>
-                        <label><input type="radio" name="msme_registered" value="no" checked> No</label>
+                        <label><input type="radio" name="msme_registered" value="yes" class="vrf-msme-radio" required> Yes</label>
+                        <label><input type="radio" name="msme_registered" value="no" class="vrf-msme-radio" required> No</label>
                     </div>
 
-                    <div class="vrf-row">
-                        <label>MSME Type</label>
-                        <select name="msme_type">
-                            <option value="">Please select</option>
-                            <option value="Micro">Micro</option>
-                            <option value="Small">Small</option>
-                            <option value="Medium">Medium</option>
-                        </select>
+                    <div class="vrf-msme-yes-fields" style="display:none;">
+                        <div class="vrf-row">
+                            <label>MSME Type *</label>
+                            <select name="msme_type" class="vrf-msme-conditional">
+                                <option value="">Please select</option>
+                                <option value="Micro">Micro</option>
+                                <option value="Small">Small</option>
+                                <option value="Medium">Medium</option>
+                            </select>
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>Udyam Registration Number *</label>
+                            <input type="text" name="udyam_number" class="vrf-msme-conditional" />
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>Udyam Certificate *</label>
+                            <input type="file" name="udyam_certificate" class="vrf-msme-conditional" />
+                        </div>
                     </div>
 
-                    <div class="vrf-row">
-                        <label>Udyam Registration Number</label>
-                        <input type="text" name="udyam_number" />
-                    </div>
+                    <div class="vrf-msme-no-fields" style="display:none;">
+                        <div class="vrf-row">
+                            <label>MSME Declaration Form</label>
+                            <p><a href="#" id="vrf-msme-declaration-download" class="vrf-download-link" download>Download MSME Declaration Form</a></p>
+                            <small>Please download, print in letterhead, sign, and seal the form.</small>
+                        </div>
 
-                    <div class="vrf-row">
-                        <label>Udyam Certificate</label>
-                        <input type="file" name="udyam_certificate" />
+                        <div class="vrf-row">
+                            <label>Signed Copy of Declaration *</label>
+                            <input type="file" name="msme_declaration_signed" class="vrf-msme-no-conditional" />
+                        </div>
                     </div>
 
                     <div class="vrf-actions">
@@ -277,23 +306,33 @@ class VRF_Plugin {
                     <h3 class="vrf-section-title">Bank Details</h3>
 
                     <div class="vrf-row">
-                        <label>Bank Name</label>
-                        <input type="text" name="bank_name" />
+                        <label>Beneficiary Name *</label>
+                        <input type="text" name="beneficiary_name" required />
                     </div>
 
                     <div class="vrf-row">
-                        <label>Account Number</label>
-                        <input type="text" name="bank_account" />
+                        <label>Bank Name *</label>
+                        <input type="text" name="bank_name" required />
                     </div>
 
                     <div class="vrf-row">
-                        <label>IFSC</label>
-                        <input type="text" name="ifsc" />
+                        <label>Branch Name *</label>
+                        <input type="text" name="branch_name" required />
                     </div>
 
                     <div class="vrf-row">
-                        <label>Cancelled Cheque / Bank Proof</label>
-                        <input type="file" name="bank_proof" />
+                        <label>Bank IFSC Code *</label>
+                        <input type="text" name="ifsc" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Bank Account Number *</label>
+                        <input type="text" name="bank_account" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Cancelled Cheque Leaf / Bank Details in Company Letterhead *</label>
+                        <input type="file" name="bank_proof" required />
                     </div>
 
                     <div class="vrf-actions">
@@ -304,16 +343,29 @@ class VRF_Plugin {
 
                 <!-- Step 5: TDS -->
                 <div class="vrf-panel" data-panel="5" style="display:none;">
-                    <h3 class="vrf-section-title">TDS</h3>
+                    <h3 class="vrf-section-title">TDS Details</h3>
 
                     <div class="vrf-row">
-                        <label>PAN Number</label>
-                        <input type="text" name="pan_number" />
+                        <label>PAN *</label>
+                        <input type="text" name="pan_number" required />
                     </div>
 
                     <div class="vrf-row">
-                        <label>PAN Card</label>
-                        <input type="file" name="pan_card" />
+                        <label>PAN Type *</label>
+                        <select name="pan_type" required>
+                            <option value="">Please select</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Company">Company</option>
+                            <option value="Partnership">Partnership</option>
+                            <option value="HUF">HUF</option>
+                            <option value="Trust">Trust</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>PAN Card *</label>
+                        <input type="file" name="pan_card" required />
                     </div>
 
                     <div class="vrf-actions">
@@ -338,10 +390,10 @@ class VRF_Plugin {
         $allowed = array(
             'form_type','organisation_name','company_registration_number','iec_code','street_address','street_address_2','country','state','city','zip',
             'products','purchase_contact_name','purchase_contact_phone','purchase_contact_email','accounts_contact_name','accounts_contact_phone','accounts_contact_email',
-            'gst_registered','gst_number','gst_legal_name','taxpayer_type',
+            'gst_registered','gst_number','gst_legal_name','taxpayer_type','einvoice_applicability','return_filing_frequency',
             'msme_registered','msme_type','udyam_number',
-            'bank_name','bank_account','ifsc',
-            'pan_number'
+            'beneficiary_name','bank_name','branch_name','bank_account','ifsc',
+            'pan_number','pan_type'
         );
 
         $data = array();
@@ -363,6 +415,7 @@ class VRF_Plugin {
             'company_registration_file',
             'gst_certificate',
             'udyam_certificate',
+            'msme_declaration_signed',
             'bank_proof',
             'pan_card'
         );
@@ -496,6 +549,7 @@ class VRF_Plugin {
                 'company_registration_file' => 'Company Registration',
                 'gst_certificate' => 'GST Certificate',
                 'udyam_certificate' => 'Udyam Certificate',
+                'msme_declaration_signed' => 'MSME Declaration',
                 'bank_proof' => 'Bank Proof',
                 'pan_card' => 'PAN Card',
             );

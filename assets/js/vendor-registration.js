@@ -64,6 +64,7 @@
         
         function validateUdyam(udyam) {
             // Udyam format: UDYAM-XX-00-0000000 (19 characters)
+            // Note: This validates the format structure but not actual state codes
             var re = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
             return re.test(udyam);
         }
@@ -173,35 +174,34 @@
             }
         });
 
+        // Helper function for conditional field management
+        function toggleConditionalFields(containerSelector, fieldSelector, shouldShow, isRequired) {
+            var $container = $(containerSelector);
+            var $fields = $(fieldSelector);
+            
+            if (shouldShow) {
+                $container.show();
+                $fields.prop('required', isRequired);
+            } else {
+                $container.hide();
+                $fields.prop('required', false).removeClass('vrf-invalid').val('');
+                $container.find('.vrf-error').remove();
+                // Clear radio buttons
+                $fields.filter(':radio').prop('checked', false);
+            }
+        }
+
         // GST Registration conditional fields
         $('input[name="gst_registered"]').on('change', function() {
             var isGSTYes = $(this).val() === 'yes';
-            if (isGSTYes) {
-                $('.vrf-gst-fields').show();
-                $('.vrf-gst-conditional').prop('required', true);
-                $('.vrf-gst-conditional-radio').prop('required', true);
-            } else {
-                $('.vrf-gst-fields').hide();
-                $('.vrf-gst-conditional').prop('required', false).removeClass('vrf-invalid').val('');
-                $('.vrf-gst-conditional-radio').prop('required', false).prop('checked', false);
-                $('.vrf-gst-fields').find('.vrf-error').remove();
-            }
+            toggleConditionalFields('.vrf-gst-fields', '.vrf-gst-conditional, .vrf-gst-conditional-radio', isGSTYes, true);
         });
 
         // MSME Registration conditional fields
         $('input[name="msme_registered"]').on('change', function() {
             var isMSMEYes = $(this).val() === 'yes';
-            if (isMSMEYes) {
-                $('.vrf-msme-yes-fields').show();
-                $('.vrf-msme-no-fields').hide();
-                $('.vrf-msme-conditional').prop('required', true);
-                $('.vrf-msme-no-conditional').prop('required', false).removeClass('vrf-invalid').val('');
-            } else {
-                $('.vrf-msme-yes-fields').hide();
-                $('.vrf-msme-no-fields').show();
-                $('.vrf-msme-conditional').prop('required', false).removeClass('vrf-invalid').val('');
-                $('.vrf-msme-no-conditional').prop('required', true);
-            }
+            toggleConditionalFields('.vrf-msme-yes-fields', '.vrf-msme-conditional', isMSMEYes, true);
+            toggleConditionalFields('.vrf-msme-no-fields', '.vrf-msme-no-conditional', !isMSMEYes, true);
         });
 
         // Country change - load states

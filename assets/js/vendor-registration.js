@@ -393,11 +393,8 @@
             // If clicking on a previous step, allow navigation
             if (step < current) {
                 showPanel(step);
-                return;
-            }
-            
-            // If clicking on a future step, validate current step first
-            if (step > current) {
+            } else {
+                // Clicking on a future step, validate current step first
                 var isValid = validateCurrentPanel();
                 
                 if (!isValid) {

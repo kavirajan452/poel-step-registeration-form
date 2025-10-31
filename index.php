@@ -1084,16 +1084,23 @@ class VRF_Plugin {
             'pan_card' => 'PAN Card'
         );
         
-        echo '<div style="padding: 10px 0;">';
+        // Add minimal inline styles only where WordPress doesn't provide alternatives
+        echo '<style>
+            .vrf-file-item { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-left: 3px solid #2271b1; }
+            .vrf-file-label { display: block; margin-bottom: 5px; font-weight: 600; }
+            .vrf-file-link { color: #2271b1; text-decoration: none; }
+        </style>';
+        
+        echo '<div class="inside">';
         foreach ( $file_fields as $key => $label ) {
             $attach_id = get_post_meta( $post->ID, $key, true );
             if ( $attach_id ) {
                 $url = wp_get_attachment_url( $attach_id );
                 $filename = basename( get_attached_file( $attach_id ) );
                 if ( $url ) {
-                    echo '<div style="margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-left: 3px solid #2271b1;">';
-                    echo '<strong style="display: block; margin-bottom: 5px; color: #1d2327;">' . esc_html( $label ) . '</strong>';
-                    echo '<a href="' . esc_url( $url ) . '" target="_blank" download style="color: #2271b1; text-decoration: none; font-size: 13px;">';
+                    echo '<div class="vrf-file-item">';
+                    echo '<span class="vrf-file-label">' . esc_html( $label ) . '</span>';
+                    echo '<a href="' . esc_url( $url ) . '" class="vrf-file-link" target="_blank" download>';
                     echo '📎 ' . esc_html( $filename ) . '</a>';
                     echo '</div>';
                 }
@@ -1104,13 +1111,14 @@ class VRF_Plugin {
 
     // Helper function to render meta fields
     private function render_meta_fields( $post_id, $fields ) {
-        echo '<table class="form-table" style="margin-top: 10px;">';
+        echo '<table class="form-table" role="presentation">';
+        echo '<tbody>';
         foreach ( $fields as $key => $label ) {
             $value = get_post_meta( $post_id, $key, true );
             if ( ! empty( $value ) ) {
                 echo '<tr>';
-                echo '<th style="width: 250px; padding: 10px 0; text-align: left; font-weight: 600; color: #1d2327;">' . esc_html( $label ) . ':</th>';
-                echo '<td style="padding: 10px 0;">';
+                echo '<th scope="row">' . esc_html( $label ) . ':</th>';
+                echo '<td>';
                 
                 // Handle array values (like vendor_type)
                 if ( is_array( $value ) ) {
@@ -1124,6 +1132,7 @@ class VRF_Plugin {
                 echo '</tr>';
             }
         }
+        echo '</tbody>';
         echo '</table>';
     }
 

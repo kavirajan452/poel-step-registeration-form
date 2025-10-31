@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: Vendor Registration Form
-Description: Multi-step vendor registration form shortcode, stores submissions as custom post type 'registrations' with file attachments and displays downloads in admin.
-Version: 1.0
+Plugin Name: Vendor & Customer Registration Forms
+Description: Multi-step vendor and customer registration forms with shortcodes, stores submissions as custom post type 'registrations' with file attachments and displays downloads in admin.
+Version: 1.1
 Author: GitHub Copilot (adapted)
 */
 
@@ -13,6 +13,7 @@ class VRF_Plugin {
     public function __construct() {
         add_action( 'init', [ $this, 'register_post_type' ] );
         add_shortcode( 'vendor_registration_form', [ $this, 'render_shortcode' ] );
+        add_shortcode( 'customer_registration_form', [ $this, 'render_customer_shortcode' ] );
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
         add_action( 'wp_ajax_vrf_submit', [ $this, 'handle_ajax_submit' ] );
         add_action( 'wp_ajax_nopriv_vrf_submit', [ $this, 'handle_ajax_submit' ] );
@@ -54,18 +55,41 @@ class VRF_Plugin {
 
     // Enqueue JS/CSS
     public function enqueue_assets() {
-        if ( ! is_singular() && ! is_page() && ! has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'vendor_registration_form' ) ) {
-            // we will enqueue only when shortcode present; but WP doesn't give easy way here — enqueue unconditionally on frontend
+        // Check if page has either shortcode
+        $content = get_post_field( 'post_content', get_the_ID() );
+        $has_vendor_form = has_shortcode( $content, 'vendor_registration_form' );
+        $has_customer_form = has_shortcode( $content, 'customer_registration_form' );
+        
+        if ( ! is_singular() && ! is_page() && ! $has_vendor_form && ! $has_customer_form ) {
+            // Don't enqueue if no shortcode present
+            return;
         }
-        wp_register_script( 'vendor-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/vendor-registration.js', array('jquery'), '1.0', true );
-        wp_register_style( 'vendor-registration-css', plugin_dir_url( __FILE__ ) . 'assets/css/vendor-registration.css', array(), '1.0' );
-        wp_enqueue_script( 'vendor-registration-js' );
+        
+        // Register scripts
+        wp_register_script( 'vendor-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/vendor-registration.js', array('jquery'), '1.1', true );
+        wp_register_script( 'customer-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/customer-registration.js', array('jquery'), '1.1', true );
+        wp_register_style( 'vendor-registration-css', plugin_dir_url( __FILE__ ) . 'assets/css/vendor-registration.css', array(), '1.1' );
+        
+        // Enqueue CSS (shared by both forms)
         wp_enqueue_style( 'vendor-registration-css' );
-
-        wp_localize_script( 'vendor-registration-js', 'vrf_ajax', array(
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'vrf_nonce' ),
-        ) );
+        
+        // Enqueue vendor JS only if vendor form is present
+        if ( $has_vendor_form ) {
+            wp_enqueue_script( 'vendor-registration-js' );
+            wp_localize_script( 'vendor-registration-js', 'vrf_ajax', array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'vrf_nonce' ),
+            ) );
+        }
+        
+        // Enqueue customer JS only if customer form is present
+        if ( $has_customer_form ) {
+            wp_enqueue_script( 'customer-registration-js' );
+            wp_localize_script( 'customer-registration-js', 'vrf_ajax', array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'vrf_nonce' ),
+            ) );
+        }
     }
 
     // Shortcode output (form)
@@ -385,6 +409,216 @@ class VRF_Plugin {
         return ob_get_clean();
     }
 
+    // Customer Shortcode output (form)
+    public function render_customer_shortcode( $atts ) {
+        ob_start();
+        ?>
+        <div class="vrf-container">
+            <h2 class="vrf-title">CUSTOMER REGISTRATION FORM</h2>
+
+            <div class="vrf-steps">
+                <button class="vrf-step active" data-step="1">Basic Info</button>
+                <button class="vrf-step" data-step="2">GST</button>
+                <button class="vrf-step" data-step="3">TDS</button>
+            </div>
+
+            <form id="customer-registration-form" class="vrf-form" enctype="multipart/form-data" novalidate>
+                <input type="hidden" name="action" value="vrf_submit" />
+                <input type="hidden" name="vrf_nonce" value="<?php echo wp_create_nonce('vrf_nonce'); ?>" />
+                <input type="hidden" name="form_type" value="customer" />
+
+                <!-- Step 1: Basic Info -->
+                <div class="vrf-panel" data-panel="1">
+                    <h3 class="vrf-section-title">Basic Information</h3>
+
+                    <div class="vrf-row">
+                        <label>Organisation Name *</label>
+                        <input type="text" name="organisation_name" placeholder="Company/Trade License/GST Registration Name" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Company Registration / Trade License Number *</label>
+                        <input type="text" name="company_registration_number" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Company Registration / Trade License File Upload *</label>
+                        <input type="file" name="company_registration_file" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Importer / Exporter Code</label>
+                        <input type="text" name="iec_code" />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Street Address *</label>
+                        <input type="text" name="street_address" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Street Address Line 2</label>
+                        <input type="text" name="street_address_2" />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Country *</label>
+                        <select name="country" id="crf-country" required>
+                            <option value="">Select Country</option>
+                            <option value="India" selected>India</option>
+                            <option value="USA">USA</option>
+                            <option value="UK">UK</option>
+                        </select>
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>State *</label>
+                        <select name="state" id="crf-state" required>
+                            <option value="">Select State</option>
+                        </select>
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>City *</label>
+                        <select name="city" id="crf-city" required>
+                            <option value="">Select City</option>
+                        </select>
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>Zip Code</label>
+                        <input type="text" name="zip" />
+                    </div>
+
+                    <div class="vrf-row vrf-checks">
+                        <label>Customer Type *</label>
+                        <label><input type="checkbox" name="customer_type[]" value="Goods" class="vrf-customer-type"> Goods</label>
+                        <label><input type="checkbox" name="customer_type[]" value="Services" class="vrf-customer-type"> Services</label>
+                    </div>
+
+                    <div class="vrf-row-inline">
+                        <div>
+                            <label>Purchase Contact Person Name *</label>
+                            <input type="text" name="purchase_contact_name" required />
+                        </div>
+                        <div>
+                            <label>Purchase Contact Person Phone No *</label>
+                            <input type="text" name="purchase_contact_phone" required />
+                        </div>
+                        <div>
+                            <label>Purchase Contact Person Email *</label>
+                            <input type="email" name="purchase_contact_email" required />
+                        </div>
+                    </div>
+
+                    <div class="vrf-row-inline">
+                        <div>
+                            <label>Accounts Contact Person Name *</label>
+                            <input type="text" name="accounts_contact_name" required />
+                        </div>
+                        <div>
+                            <label>Accounts Contact Person Phone No *</label>
+                            <input type="text" name="accounts_contact_phone" required />
+                        </div>
+                        <div>
+                            <label>Accounts Contact Person Email *</label>
+                            <input type="email" name="accounts_contact_email" required />
+                        </div>
+                    </div>
+
+                    <div class="vrf-actions">
+                        <button type="button" class="vrf-next">Next</button>
+                    </div>
+                </div>
+
+                <!-- Step 2: GST -->
+                <div class="vrf-panel" data-panel="2" style="display:none;">
+                    <h3 class="vrf-section-title">GST Registration</h3>
+
+                    <div class="vrf-row">
+                        <label>GST Registration *</label>
+                        <label><input type="radio" name="gst_registered" value="yes" class="vrf-gst-radio" required> Yes</label>
+                        <label><input type="radio" name="gst_registered" value="no" class="vrf-gst-radio" required> No</label>
+                    </div>
+
+                    <div class="vrf-gst-fields" style="display:none;">
+                        <div class="vrf-row">
+                            <label>GST Registration Number *</label>
+                            <input type="text" name="gst_number" class="vrf-gst-conditional" />
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>Legal Name (as per GST)</label>
+                            <input type="text" name="gst_legal_name" class="vrf-gst-conditional" />
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>Tax Payer Type</label>
+                            <select name="taxpayer_type" class="vrf-gst-conditional">
+                                <option value="">Please select</option>
+                                <option value="Regular">Regular</option>
+                                <option value="Composition">Composition</option>
+                            </select>
+                        </div>
+
+                        <div class="vrf-row">
+                            <label>GST Certificate *</label>
+                            <input type="file" name="gst_certificate" class="vrf-gst-conditional" />
+                        </div>
+                    </div>
+
+                    <div class="vrf-actions">
+                        <button type="button" class="vrf-back">Back</button>
+                        <button type="button" class="vrf-next">Next</button>
+                    </div>
+                </div>
+
+                <!-- Step 3: TDS -->
+                <div class="vrf-panel" data-panel="3" style="display:none;">
+                    <h3 class="vrf-section-title">TDS Details</h3>
+
+                    <div class="vrf-row">
+                        <label>PAN *</label>
+                        <input type="text" name="pan_number" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>PAN Type *</label>
+                        <select name="pan_type" required>
+                            <option value="">Please select</option>
+                            <option value="Individual">Individual</option>
+                            <option value="Company">Company</option>
+                            <option value="Partnership">Partnership</option>
+                            <option value="HUF">HUF</option>
+                            <option value="Trust">Trust</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>PAN Card *</label>
+                        <input type="file" name="pan_card" required />
+                    </div>
+
+                    <div class="vrf-row">
+                        <label>TAN Number *</label>
+                        <input type="text" name="tan_number" required />
+                    </div>
+
+                    <div class="vrf-actions">
+                        <button type="button" class="vrf-back">Back</button>
+                        <button type="submit" class="vrf-submit">Submit</button>
+                    </div>
+                </div>
+
+                <div id="vrf-message" style="display:none;"></div>
+
+            </form>
+        </div>
+        <?php
+        return ob_get_clean();
+    }
+
     // Handle AJAX submission: validate, upload files, create CPT with meta
     public function handle_ajax_submit() {
         check_ajax_referer( 'vrf_nonce', 'vrf_nonce' );
@@ -396,7 +630,7 @@ class VRF_Plugin {
             'gst_registered','gst_number','gst_legal_name','taxpayer_type','einvoice_applicability','return_filing_frequency',
             'msme_registered','msme_type','udyam_number',
             'beneficiary_name','bank_name','branch_name','bank_account','ifsc',
-            'pan_number','pan_type'
+            'pan_number','pan_type','tan_number'
         );
 
         $data = array();
@@ -411,6 +645,13 @@ class VRF_Plugin {
             $data['vendor_type'] = array_map( 'sanitize_text_field', wp_unslash( $_POST['vendor_type'] ) );
         } else {
             $data['vendor_type'] = array();
+        }
+
+        // customer_type is array
+        if ( isset( $_POST['customer_type'] ) && is_array( $_POST['customer_type'] ) ) {
+            $data['customer_type'] = array_map( 'sanitize_text_field', wp_unslash( $_POST['customer_type'] ) );
+        } else {
+            $data['customer_type'] = array();
         }
 
         // files: handle uploads using WP handle_upload and attach to media library
@@ -517,7 +758,8 @@ class VRF_Plugin {
 
     // Send email notifications to user and admin
     private function send_registration_emails( $post_id, $data, $uploaded ) {
-        $org_name = isset( $data['organisation_name'] ) ? $data['organisation_name'] : 'Vendor';
+        $form_type = isset( $data['form_type'] ) ? ucfirst( $data['form_type'] ) : 'Vendor';
+        $org_name = isset( $data['organisation_name'] ) ? $data['organisation_name'] : $form_type;
         $user_email = isset( $data['purchase_contact_email'] ) ? $data['purchase_contact_email'] : '';
         
         // Get admin email
@@ -525,7 +767,7 @@ class VRF_Plugin {
         
         // Send acknowledgement email to user
         if ( ! empty( $user_email ) && is_email( $user_email ) ) {
-            $user_subject = 'Thank You for Your Vendor Registration - ' . $org_name;
+            $user_subject = 'Thank You for Your ' . $form_type . ' Registration - ' . $org_name;
             $user_message = $this->get_user_email_template( $data );
             
             $headers = array( 'Content-Type: text/html; charset=UTF-8' );
@@ -538,7 +780,7 @@ class VRF_Plugin {
         
         // Send detailed email to admin with data
         if ( ! empty( $admin_email ) ) {
-            $admin_subject = 'New Vendor Registration: ' . $org_name;
+            $admin_subject = 'New ' . $form_type . ' Registration: ' . $org_name;
             $admin_message = $this->get_admin_email_template( $post_id, $data, $uploaded );
             
             $headers = array( 'Content-Type: text/html; charset=UTF-8' );
@@ -562,7 +804,8 @@ class VRF_Plugin {
 
     // User email template (acknowledgement)
     private function get_user_email_template( $data ) {
-        $org_name = isset( $data['organisation_name'] ) ? esc_html( $data['organisation_name'] ) : 'Vendor';
+        $form_type = isset( $data['form_type'] ) ? ucfirst( $data['form_type'] ) : 'Vendor';
+        $org_name = isset( $data['organisation_name'] ) ? esc_html( $data['organisation_name'] ) : $form_type;
         $contact_name = isset( $data['purchase_contact_name'] ) ? esc_html( $data['purchase_contact_name'] ) : '';
         
         $message = '<!DOCTYPE html>
@@ -581,14 +824,14 @@ class VRF_Plugin {
 <body>
     <div class="container">
         <div class="header">
-            <h1>Vendor Registration Confirmation</h1>
+            <h1>' . esc_html( $form_type ) . ' Registration Confirmation</h1>
         </div>
         <div class="content">
             <p>Dear ' . $contact_name . ',</p>
             
             <p>Thank you for registering with <span class="highlight">POEL</span>.</p>
             
-            <p>We have successfully received your vendor registration for <strong>' . $org_name . '</strong>.</p>
+            <p>We have successfully received your ' . strtolower( $form_type ) . ' registration for <strong>' . $org_name . '</strong>.</p>
             
             <p>Our team will review your application and contact you shortly. If you have any questions in the meantime, please feel free to reach out to us.</p>
             
@@ -617,6 +860,7 @@ class VRF_Plugin {
 
     // Admin email template (with all data)
     private function get_admin_email_template( $post_id, $data, $uploaded ) {
+        $form_type = isset( $data['form_type'] ) ? ucfirst( $data['form_type'] ) : 'Vendor';
         $org_name = isset( $data['organisation_name'] ) ? esc_html( $data['organisation_name'] ) : 'N/A';
         
         $message = '<!DOCTYPE html>
@@ -641,7 +885,7 @@ class VRF_Plugin {
 <body>
     <div class="container">
         <div class="header">
-            <h1>New Vendor Registration</h1>
+            <h1>New ' . esc_html( $form_type ) . ' Registration</h1>
             <p>' . $org_name . '</p>
         </div>
         <div class="content">
@@ -660,6 +904,7 @@ class VRF_Plugin {
                 ' . $this->format_field( 'City', $data, 'city' ) . '
                 ' . $this->format_field( 'Zip Code', $data, 'zip' ) . '
                 ' . $this->format_field( 'Vendor Type', $data, 'vendor_type', true ) . '
+                ' . $this->format_field( 'Customer Type', $data, 'customer_type', true ) . '
                 ' . $this->format_field( 'Products/Services Offered', $data, 'products' ) . '
             </div>
             
@@ -703,6 +948,7 @@ class VRF_Plugin {
                 <div class="section-title">TDS Information</div>
                 ' . $this->format_field( 'PAN Number', $data, 'pan_number' ) . '
                 ' . $this->format_field( 'PAN Type', $data, 'pan_type' ) . '
+                ' . $this->format_field( 'TAN Number', $data, 'tan_number' ) . '
             </div>
             
             <div class="section">
@@ -1017,6 +1263,7 @@ class VRF_Plugin {
             'city' => 'City',
             'zip' => 'Zip Code',
             'vendor_type' => 'Vendor Type',
+            'customer_type' => 'Customer Type',
             'products' => 'Products/Services Offered'
         ) );
     }
@@ -1069,7 +1316,8 @@ class VRF_Plugin {
     public function render_tds_info_meta_box( $post ) {
         $this->render_meta_fields( $post->ID, array(
             'pan_number' => 'PAN Number',
-            'pan_type' => 'PAN Type'
+            'pan_type' => 'PAN Type',
+            'tan_number' => 'TAN Number'
         ) );
     }
 

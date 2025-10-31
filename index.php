@@ -382,6 +382,9 @@ class VRF_Plugin {
                 // Validate file type (jpg, jpeg, pdf only)
                 $allowed_types = array('image/jpeg', 'image/jpg', 'application/pdf');
                 $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                if ( $finfo === false ) {
+                    wp_send_json_error( array( 'message' => 'Failed to validate file type for ' . $field ) );
+                }
                 $mime = finfo_file($finfo, $file['tmp_name']);
                 finfo_close($finfo);
                 
@@ -540,6 +543,7 @@ class VRF_Plugin {
 
     // AJAX handler for getting states based on country
     public function ajax_get_states() {
+        check_ajax_referer( 'vrf_nonce', 'nonce' );
         $country = isset( $_POST['country'] ) ? sanitize_text_field( $_POST['country'] ) : '';
         
         $states = array();
@@ -576,6 +580,7 @@ class VRF_Plugin {
 
     // AJAX handler for getting cities based on state
     public function ajax_get_cities() {
+        check_ajax_referer( 'vrf_nonce', 'nonce' );
         $state = isset( $_POST['state'] ) ? sanitize_text_field( $_POST['state'] ) : '';
         
         $cities = array();
@@ -604,9 +609,6 @@ class VRF_Plugin {
             $cities = array('Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth');
         } elseif ( $state === 'England' ) {
             $cities = array('London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds');
-        } else {
-            // Generic cities for other states
-            $cities = array('City 1', 'City 2', 'City 3', 'City 4', 'City 5');
         }
         
         wp_send_json_success( array( 'cities' => $cities ) );

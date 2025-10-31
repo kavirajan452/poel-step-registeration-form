@@ -160,7 +160,8 @@
                 method: 'POST',
                 data: {
                     action: 'vrf_get_states',
-                    country: country
+                    country: country,
+                    nonce: vrf_ajax.nonce
                 },
                 success: function(resp) {
                     if (resp.success && resp.data.states) {
@@ -192,7 +193,8 @@
                 method: 'POST',
                 data: {
                     action: 'vrf_get_cities',
-                    state: state
+                    state: state,
+                    nonce: vrf_ajax.nonce
                 },
                 success: function(resp) {
                     if (resp.success && resp.data.cities) {

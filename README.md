@@ -190,21 +190,27 @@ All form data is stored as post meta:
 - ✅ **TAN Number Validation**: Real-time validation for TAN number format (ABCD12345E)
 - ✅ **Customer Type Field**: Checkbox group for Goods and Services selection
 
-For detailed information about the customer form, see [CUSTOMER_FORM_USAGE.md](CUSTOMER_FORM_USAGE.md)
+## Recent Enhancements (v1.2)
+- ✅ **Email Configuration Settings**: Configurable admin email recipients, CC, and BCC for both vendor and customer forms
+- ✅ **Registration Protection**: Prevent editing and trashing of registration entries to maintain data integrity
+
+For detailed information:
+- Customer form: see [CUSTOMER_FORM_USAGE.md](CUSTOMER_FORM_USAGE.md)
+- Email settings: see [EMAIL_SETTINGS.md](EMAIL_SETTINGS.md)
+- Registration protection: see [REGISTRATION_PROTECTION.md](REGISTRATION_PROTECTION.md)
 
 ## Future Enhancements
 This plugin is designed to be extensible. Future versions may include:
-- Export functionality for registrations
-- Custom email templates with admin UI
 - Additional location data
 - Integration with CRM systems
 - SMS notifications
+- Advanced reporting and analytics
 
 ## Author
 Developed with GitHub Copilot
 
 ## Version
-1.1
+1.2
 
 ## License
 This plugin is provided as-is for the specific use case described.

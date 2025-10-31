@@ -1565,15 +1565,16 @@ class VRF_Plugin {
         $where = "post_type = 'registrations' AND post_status = 'publish'";
         
         if ( ! empty( $post_ids ) ) {
-            $post_ids_str = implode( ',', array_map( 'intval', $post_ids ) );
-            $where .= " AND ID IN ($post_ids_str)";
+            $post_ids = array_map( 'intval', $post_ids );
+            $placeholders = implode( ',', array_fill( 0, count( $post_ids ), '%d' ) );
+            $where .= $wpdb->prepare( " AND ID IN ($placeholders)", ...$post_ids );
         }
         
         if ( ! empty( $form_type ) ) {
             $where .= $wpdb->prepare( " AND ID IN (SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'form_type' AND meta_value = %s)", $form_type );
         }
         
-        $limit_clause = $limit > 0 ? "LIMIT $limit" : "";
+        $limit_clause = $limit > 0 ? $wpdb->prepare( "LIMIT %d", $limit ) : "";
         
         $posts = $wpdb->get_results( "
             SELECT ID, post_title, post_date 
@@ -1723,17 +1724,12 @@ class VRF_Plugin {
     
     // Export as PDF using simple HTML to PDF conversion
     private function export_pdf( $data ) {
-        // For a simple PDF, we'll use FPDF or similar. For now, let's create a basic HTML version
-        // that can be printed as PDF. For production, use a library like TCPDF or FPDF
+        // Generate HTML that can be opened in browser and saved/printed as PDF
+        $filename = 'registrations_' . date( 'Y-m-d_H-i-s' ) . '.html';
         
-        $filename = 'registrations_' . date( 'Y-m-d_H-i-s' ) . '.pdf';
-        
-        // Basic PDF generation using HTML
-        header( 'Content-Type: application/pdf' );
+        // Send as HTML with PDF-like styling
+        header( 'Content-Type: text/html; charset=utf-8' );
         header( 'Content-Disposition: attachment; filename=' . $filename );
-        
-        // For simplicity, we'll generate an HTML page that looks like a PDF
-        // In production, you should use a proper PDF library
         echo '<!DOCTYPE html>
         <html>
         <head>
@@ -1868,21 +1864,28 @@ class VRF_Plugin {
         
         // Import countries
         $countries_file = $plugin_dir . 'assets/countries.sql';
-        if ( file_exists( $countries_file ) ) {
+        if ( file_exists( $countries_file ) && is_readable( $countries_file ) ) {
             $sql = file_get_contents( $countries_file );
+            
+            // Validate that file starts with expected SQL structure
+            if ( strpos( $sql, 'CREATE TABLE' ) === false && strpos( $sql, 'INSERT INTO' ) === false ) {
+                error_log( 'VRF: Invalid countries.sql file format' );
+                return;
+            }
             
             // Replace table name in SQL
             $sql = str_replace( 'countries', $wpdb->prefix . 'vrf_countries', $sql );
             
-            // Remove foreign key constraints and references to other tables
-            $sql = preg_replace( '/CONSTRAINT.*?FOREIGN KEY.*?\n/s', '', $sql );
-            $sql = preg_replace( '/,\s*KEY.*?region.*?\n/s', '', $sql );
+            // Remove foreign key constraints and references to other tables for safety
+            $sql = preg_replace( '/CONSTRAINT\s+.*?FOREIGN\s+KEY.*?(?=,|\))/s', '', $sql );
+            $sql = preg_replace( '/,\s*KEY\s+.*?region.*?(?=,|\))/s', '', $sql );
             
             // Execute SQL in chunks to avoid memory issues
             $statements = explode( ';', $sql );
             foreach ( $statements as $statement ) {
                 $statement = trim( $statement );
-                if ( ! empty( $statement ) && strpos( $statement, 'INSERT INTO' ) !== false ) {
+                // Only execute INSERT statements for security
+                if ( ! empty( $statement ) && stripos( $statement, 'INSERT INTO' ) !== false ) {
                     $wpdb->query( $statement );
                 }
             }
@@ -1890,8 +1893,14 @@ class VRF_Plugin {
         
         // Import states
         $states_file = $plugin_dir . 'assets/states.sql';
-        if ( file_exists( $states_file ) ) {
+        if ( file_exists( $states_file ) && is_readable( $states_file ) ) {
             $sql = file_get_contents( $states_file );
+            
+            // Validate file format
+            if ( strpos( $sql, 'CREATE TABLE' ) === false && strpos( $sql, 'INSERT INTO' ) === false ) {
+                error_log( 'VRF: Invalid states.sql file format' );
+                return;
+            }
             
             // Replace table name in SQL
             $sql = str_replace( 'states', $wpdb->prefix . 'vrf_states', $sql );
@@ -1900,7 +1909,7 @@ class VRF_Plugin {
             $statements = explode( ';', $sql );
             foreach ( $statements as $statement ) {
                 $statement = trim( $statement );
-                if ( ! empty( $statement ) && strpos( $statement, 'INSERT INTO' ) !== false ) {
+                if ( ! empty( $statement ) && stripos( $statement, 'INSERT INTO' ) !== false ) {
                     $wpdb->query( $statement );
                 }
             }
@@ -1908,8 +1917,14 @@ class VRF_Plugin {
         
         // Import cities
         $cities_file = $plugin_dir . 'assets/cities.sql';
-        if ( file_exists( $cities_file ) ) {
+        if ( file_exists( $cities_file ) && is_readable( $cities_file ) ) {
             $sql = file_get_contents( $cities_file );
+            
+            // Validate file format
+            if ( strpos( $sql, 'CREATE TABLE' ) === false && strpos( $sql, 'INSERT INTO' ) === false ) {
+                error_log( 'VRF: Invalid cities.sql file format' );
+                return;
+            }
             
             // Replace table name in SQL
             $sql = str_replace( 'cities', $wpdb->prefix . 'vrf_cities', $sql );
@@ -1918,7 +1933,7 @@ class VRF_Plugin {
             $statements = explode( ';', $sql );
             foreach ( $statements as $statement ) {
                 $statement = trim( $statement );
-                if ( ! empty( $statement ) && strpos( $statement, 'INSERT INTO' ) !== false ) {
+                if ( ! empty( $statement ) && stripos( $statement, 'INSERT INTO' ) !== false ) {
                     $wpdb->query( $statement );
                 }
             }

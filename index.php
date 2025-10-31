@@ -31,6 +31,12 @@ class VRF_Plugin {
         
         // Admin meta boxes for post edit screen
         add_action( 'add_meta_boxes', [ $this, 'add_registration_meta_boxes' ] );
+        
+        // Export functionality
+        add_action( 'admin_menu', [ $this, 'add_export_menu' ] );
+        add_action( 'admin_init', [ $this, 'handle_export' ] );
+        add_filter( 'bulk_actions-edit-registrations', [ $this, 'add_bulk_export_action' ] );
+        add_filter( 'handle_bulk_actions-edit-registrations', [ $this, 'handle_bulk_export' ], 10, 3 );
     }
 
     // Register CPT "registrations"
@@ -1395,6 +1401,390 @@ class VRF_Plugin {
         }
         echo '</tbody>';
         echo '</table>';
+    }
+
+    // Add export menu page
+    public function add_export_menu() {
+        add_submenu_page(
+            'edit.php?post_type=registrations',
+            'Export Registrations',
+            'Export',
+            'manage_options',
+            'vrf-export',
+            [ $this, 'render_export_page' ]
+        );
+    }
+    
+    // Render export page
+    public function render_export_page() {
+        ?>
+        <div class="wrap">
+            <h1>Export Registrations</h1>
+            
+            <div class="card" style="max-width: 800px;">
+                <h2>Export Options</h2>
+                
+                <form method="post" action="">
+                    <?php wp_nonce_field( 'vrf_export_action', 'vrf_export_nonce' ); ?>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="export_format">Export Format</label></th>
+                            <td>
+                                <select name="export_format" id="export_format" required>
+                                    <option value="">Select Format</option>
+                                    <option value="csv">CSV</option>
+                                    <option value="excel">Excel (XLSX)</option>
+                                    <option value="pdf">PDF</option>
+                                </select>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row"><label for="export_type">Export Type</label></th>
+                            <td>
+                                <select name="export_type" id="export_type" required onchange="toggleCustomRows()">
+                                    <option value="">Select Type</option>
+                                    <option value="all">Export All</option>
+                                    <option value="100">Export Latest 100</option>
+                                    <option value="200">Export Latest 200</option>
+                                    <option value="500">Export Latest 500</option>
+                                    <option value="1000">Export Latest 1000</option>
+                                    <option value="custom">Custom Number of Rows</option>
+                                </select>
+                            </td>
+                        </tr>
+                        
+                        <tr id="custom_rows_field" style="display:none;">
+                            <th scope="row"><label for="custom_rows">Number of Rows</label></th>
+                            <td>
+                                <input type="number" name="custom_rows" id="custom_rows" min="1" placeholder="Enter number of rows" />
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row"><label for="form_type_filter">Form Type</label></th>
+                            <td>
+                                <select name="form_type_filter" id="form_type_filter">
+                                    <option value="">All Types</option>
+                                    <option value="vendor">Vendor Only</option>
+                                    <option value="customer">Customer Only</option>
+                                </select>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <p class="submit">
+                        <button type="submit" name="vrf_export" class="button button-primary">Export Data</button>
+                    </p>
+                </form>
+                
+                <script>
+                function toggleCustomRows() {
+                    var exportType = document.getElementById('export_type').value;
+                    var customField = document.getElementById('custom_rows_field');
+                    if (exportType === 'custom') {
+                        customField.style.display = 'table-row';
+                        document.getElementById('custom_rows').required = true;
+                    } else {
+                        customField.style.display = 'none';
+                        document.getElementById('custom_rows').required = false;
+                    }
+                }
+                </script>
+            </div>
+        </div>
+        <?php
+    }
+    
+    // Add bulk export action
+    public function add_bulk_export_action( $actions ) {
+        $actions['export_csv'] = 'Export Selected (CSV)';
+        $actions['export_excel'] = 'Export Selected (Excel)';
+        $actions['export_pdf'] = 'Export Selected (PDF)';
+        return $actions;
+    }
+    
+    // Handle bulk export
+    public function handle_bulk_export( $redirect_to, $action, $post_ids ) {
+        if ( strpos( $action, 'export_' ) === 0 ) {
+            $format = str_replace( 'export_', '', $action );
+            
+            // Store post IDs in transient for processing
+            set_transient( 'vrf_export_ids', $post_ids, 60 );
+            
+            // Redirect to export handler
+            $redirect_to = add_query_arg( array(
+                'vrf_export_format' => $format,
+                'vrf_export_selected' => '1'
+            ), admin_url( 'edit.php?post_type=registrations' ) );
+        }
+        
+        return $redirect_to;
+    }
+    
+    // Handle export request
+    public function handle_export() {
+        // Handle form-based export
+        if ( isset( $_POST['vrf_export'] ) && check_admin_referer( 'vrf_export_action', 'vrf_export_nonce' ) ) {
+            $format = sanitize_text_field( $_POST['export_format'] );
+            $type = sanitize_text_field( $_POST['export_type'] );
+            $form_type = isset( $_POST['form_type_filter'] ) ? sanitize_text_field( $_POST['form_type_filter'] ) : '';
+            
+            $limit = 0;
+            if ( $type === 'all' ) {
+                $limit = 0;
+            } elseif ( $type === 'custom' ) {
+                $limit = intval( $_POST['custom_rows'] );
+            } else {
+                $limit = intval( $type );
+            }
+            
+            $this->export_registrations( $format, $limit, $form_type );
+            exit;
+        }
+        
+        // Handle bulk export
+        if ( isset( $_GET['vrf_export_selected'] ) && isset( $_GET['vrf_export_format'] ) ) {
+            $format = sanitize_text_field( $_GET['vrf_export_format'] );
+            $post_ids = get_transient( 'vrf_export_ids' );
+            
+            if ( $post_ids ) {
+                delete_transient( 'vrf_export_ids' );
+                $this->export_registrations( $format, 0, '', $post_ids );
+                exit;
+            }
+        }
+    }
+    
+    // Export registrations
+    private function export_registrations( $format, $limit = 0, $form_type = '', $post_ids = array() ) {
+        global $wpdb;
+        
+        // Build query
+        $where = "post_type = 'registrations' AND post_status = 'publish'";
+        
+        if ( ! empty( $post_ids ) ) {
+            $post_ids_str = implode( ',', array_map( 'intval', $post_ids ) );
+            $where .= " AND ID IN ($post_ids_str)";
+        }
+        
+        if ( ! empty( $form_type ) ) {
+            $where .= $wpdb->prepare( " AND ID IN (SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = 'form_type' AND meta_value = %s)", $form_type );
+        }
+        
+        $limit_clause = $limit > 0 ? "LIMIT $limit" : "";
+        
+        $posts = $wpdb->get_results( "
+            SELECT ID, post_title, post_date 
+            FROM {$wpdb->posts} 
+            WHERE $where 
+            ORDER BY post_date DESC 
+            $limit_clause
+        " );
+        
+        if ( empty( $posts ) ) {
+            wp_die( 'No registrations found to export.' );
+        }
+        
+        // Get all meta data for posts
+        $data = array();
+        foreach ( $posts as $post ) {
+            $meta = get_post_meta( $post->ID );
+            $row = array(
+                'ID' => $post->ID,
+                'Organisation Name' => isset( $meta['organisation_name'][0] ) ? $meta['organisation_name'][0] : '',
+                'Form Type' => isset( $meta['form_type'][0] ) ? ucfirst( $meta['form_type'][0] ) : '',
+                'Company Registration Number' => isset( $meta['company_registration_number'][0] ) ? $meta['company_registration_number'][0] : '',
+                'IEC Code' => isset( $meta['iec_code'][0] ) ? $meta['iec_code'][0] : '',
+                'Street Address' => isset( $meta['street_address'][0] ) ? $meta['street_address'][0] : '',
+                'Street Address 2' => isset( $meta['street_address_2'][0] ) ? $meta['street_address_2'][0] : '',
+                'Country' => isset( $meta['country'][0] ) ? $meta['country'][0] : '',
+                'State' => isset( $meta['state'][0] ) ? $meta['state'][0] : '',
+                'City' => isset( $meta['city'][0] ) ? $meta['city'][0] : '',
+                'Zip' => isset( $meta['zip'][0] ) ? $meta['zip'][0] : '',
+                'Vendor Type' => isset( $meta['vendor_type'][0] ) ? ( is_array( maybe_unserialize( $meta['vendor_type'][0] ) ) ? implode( ', ', maybe_unserialize( $meta['vendor_type'][0] ) ) : $meta['vendor_type'][0] ) : '',
+                'Customer Type' => isset( $meta['customer_type'][0] ) ? ( is_array( maybe_unserialize( $meta['customer_type'][0] ) ) ? implode( ', ', maybe_unserialize( $meta['customer_type'][0] ) ) : $meta['customer_type'][0] ) : '',
+                'Products/Services' => isset( $meta['products'][0] ) ? $meta['products'][0] : '',
+                'Purchase Contact Name' => isset( $meta['purchase_contact_name'][0] ) ? $meta['purchase_contact_name'][0] : '',
+                'Purchase Contact Phone' => isset( $meta['purchase_contact_phone'][0] ) ? $meta['purchase_contact_phone'][0] : '',
+                'Purchase Contact Email' => isset( $meta['purchase_contact_email'][0] ) ? $meta['purchase_contact_email'][0] : '',
+                'Accounts Contact Name' => isset( $meta['accounts_contact_name'][0] ) ? $meta['accounts_contact_name'][0] : '',
+                'Accounts Contact Phone' => isset( $meta['accounts_contact_phone'][0] ) ? $meta['accounts_contact_phone'][0] : '',
+                'Accounts Contact Email' => isset( $meta['accounts_contact_email'][0] ) ? $meta['accounts_contact_email'][0] : '',
+                'GST Registered' => isset( $meta['gst_registered'][0] ) ? ucfirst( $meta['gst_registered'][0] ) : '',
+                'GST Number' => isset( $meta['gst_number'][0] ) ? $meta['gst_number'][0] : '',
+                'GST Legal Name' => isset( $meta['gst_legal_name'][0] ) ? $meta['gst_legal_name'][0] : '',
+                'Tax Payer Type' => isset( $meta['taxpayer_type'][0] ) ? $meta['taxpayer_type'][0] : '',
+                'E-Invoice Applicability' => isset( $meta['einvoice_applicability'][0] ) ? $meta['einvoice_applicability'][0] : '',
+                'Return Filing Frequency' => isset( $meta['return_filing_frequency'][0] ) ? $meta['return_filing_frequency'][0] : '',
+                'MSME Registered' => isset( $meta['msme_registered'][0] ) ? ucfirst( $meta['msme_registered'][0] ) : '',
+                'MSME Type' => isset( $meta['msme_type'][0] ) ? $meta['msme_type'][0] : '',
+                'Udyam Number' => isset( $meta['udyam_number'][0] ) ? $meta['udyam_number'][0] : '',
+                'Beneficiary Name' => isset( $meta['beneficiary_name'][0] ) ? $meta['beneficiary_name'][0] : '',
+                'Bank Name' => isset( $meta['bank_name'][0] ) ? $meta['bank_name'][0] : '',
+                'Branch Name' => isset( $meta['branch_name'][0] ) ? $meta['branch_name'][0] : '',
+                'Bank Account' => isset( $meta['bank_account'][0] ) ? $meta['bank_account'][0] : '',
+                'IFSC' => isset( $meta['ifsc'][0] ) ? $meta['ifsc'][0] : '',
+                'PAN Number' => isset( $meta['pan_number'][0] ) ? $meta['pan_number'][0] : '',
+                'PAN Type' => isset( $meta['pan_type'][0] ) ? $meta['pan_type'][0] : '',
+                'TAN Number' => isset( $meta['tan_number'][0] ) ? $meta['tan_number'][0] : '',
+                'Submitted Date' => $post->post_date,
+            );
+            
+            // Add file download links
+            $file_fields = array(
+                'company_registration_file' => 'Company Registration File',
+                'gst_certificate' => 'GST Certificate',
+                'udyam_certificate' => 'Udyam Certificate',
+                'msme_declaration_signed' => 'MSME Declaration',
+                'bank_proof' => 'Bank Proof',
+                'pan_card' => 'PAN Card',
+            );
+            
+            foreach ( $file_fields as $key => $label ) {
+                if ( isset( $meta[ $key ][0] ) && ! empty( $meta[ $key ][0] ) ) {
+                    $url = wp_get_attachment_url( $meta[ $key ][0] );
+                    $row[ $label . ' URL' ] = $url ? $url : '';
+                } else {
+                    $row[ $label . ' URL' ] = '';
+                }
+            }
+            
+            $data[] = $row;
+        }
+        
+        // Export based on format
+        if ( $format === 'csv' ) {
+            $this->export_csv( $data );
+        } elseif ( $format === 'excel' ) {
+            $this->export_excel( $data );
+        } elseif ( $format === 'pdf' ) {
+            $this->export_pdf( $data );
+        }
+    }
+    
+    // Export as CSV
+    private function export_csv( $data ) {
+        $filename = 'registrations_' . date( 'Y-m-d_H-i-s' ) . '.csv';
+        
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename=' . $filename );
+        
+        $output = fopen( 'php://output', 'w' );
+        
+        // Add BOM for Excel UTF-8 support
+        fprintf( $output, chr(0xEF).chr(0xBB).chr(0xBF) );
+        
+        // Write headers
+        if ( ! empty( $data ) ) {
+            fputcsv( $output, array_keys( $data[0] ) );
+        }
+        
+        // Write data
+        foreach ( $data as $row ) {
+            fputcsv( $output, $row );
+        }
+        
+        fclose( $output );
+    }
+    
+    // Export as Excel using simple HTML table method (works in Excel)
+    private function export_excel( $data ) {
+        $filename = 'registrations_' . date( 'Y-m-d_H-i-s' ) . '.xls';
+        
+        header( 'Content-Type: application/vnd.ms-excel' );
+        header( 'Content-Disposition: attachment; filename=' . $filename );
+        
+        echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+        echo '<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /></head>';
+        echo '<body><table border="1">';
+        
+        // Headers
+        if ( ! empty( $data ) ) {
+            echo '<tr>';
+            foreach ( array_keys( $data[0] ) as $header ) {
+                echo '<th>' . htmlspecialchars( $header ) . '</th>';
+            }
+            echo '</tr>';
+        }
+        
+        // Data
+        foreach ( $data as $row ) {
+            echo '<tr>';
+            foreach ( $row as $cell ) {
+                echo '<td>' . htmlspecialchars( $cell ) . '</td>';
+            }
+            echo '</tr>';
+        }
+        
+        echo '</table></body></html>';
+    }
+    
+    // Export as PDF using simple HTML to PDF conversion
+    private function export_pdf( $data ) {
+        // For a simple PDF, we'll use FPDF or similar. For now, let's create a basic HTML version
+        // that can be printed as PDF. For production, use a library like TCPDF or FPDF
+        
+        $filename = 'registrations_' . date( 'Y-m-d_H-i-s' ) . '.pdf';
+        
+        // Basic PDF generation using HTML
+        header( 'Content-Type: application/pdf' );
+        header( 'Content-Disposition: attachment; filename=' . $filename );
+        
+        // For simplicity, we'll generate an HTML page that looks like a PDF
+        // In production, you should use a proper PDF library
+        echo '<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Registrations Export</title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 10px; }
+                table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #163a6b; color: white; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                h1 { color: #163a6b; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <h1>POEL Registrations Export</h1>
+            <p>Generated on: ' . date( 'F j, Y, g:i a' ) . '</p>
+            <table>';
+        
+        // Headers
+        if ( ! empty( $data ) ) {
+            echo '<tr>';
+            foreach ( array_keys( $data[0] ) as $header ) {
+                echo '<th>' . htmlspecialchars( $header ) . '</th>';
+            }
+            echo '</tr>';
+        }
+        
+        // Data
+        foreach ( $data as $row ) {
+            echo '<tr>';
+            foreach ( $row as $cell ) {
+                // For URLs, make them clickable
+                if ( strpos( $cell, 'http' ) === 0 ) {
+                    echo '<td><a href="' . htmlspecialchars( $cell ) . '" target="_blank">Download</a></td>';
+                } else {
+                    echo '<td>' . htmlspecialchars( $cell ) . '</td>';
+                }
+            }
+            echo '</tr>';
+        }
+        
+        echo '</table>
+            <script>
+                window.onload = function() {
+                    // Auto-print for PDF conversion
+                    // window.print();
+                }
+            </script>
+        </body>
+        </html>';
     }
 
     // Get countries from database

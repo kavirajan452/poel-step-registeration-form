@@ -1,0 +1,118 @@
+.vrf-container {
+    max-width: 980px;
+    margin: 30px auto;
+    padding: 10px
+}
+
+.vrf-title {
+    text-align: center;
+    color: #163a6b;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    font-size: 30px
+}
+
+.vrf-steps {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 30px
+}
+
+.vrf-step {
+    background: #fff;
+    border: 1px solid transparent;
+    padding: 10px 18px;
+    border-radius: 24px;
+    cursor: pointer
+}
+
+.vrf-step.active {
+    background: #ef2927;
+    color: #fff;
+    border-color: #ef2927
+}
+
+.vrf-form {
+    background: #fff;
+    padding: 10px
+}
+
+.vrf-section-title {
+    text-align: center;
+    color: #7a7a7a;
+    margin-bottom: 20px;
+    font-size: 22px
+}
+
+.vrf-row {
+    margin: 12px 0;
+    display: block
+}
+
+.vrf-row label {
+    display: block;
+    font-size: 13px;
+    color: #666;
+    margin-bottom: 6px
+}
+
+.vrf-row input[type="text"],
+.vrf-row input[type="email"],
+.vrf-row select,
+.vrf-row textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px
+}
+
+.vrf-row-inline {
+    display: flex;
+    gap: 10px
+}
+
+.vrf-row-inline>div {
+    flex: 1
+}
+
+.vrf-checks label {
+    display: inline-block;
+    margin-right: 14px
+}
+
+.vrf-actions {
+    margin-top: 24px;
+    text-align: center
+}
+
+.vrf-actions button {
+    background: #ef2927;
+    color: #fff;
+    border: none;
+    padding: 12px 28px;
+    border-radius: 24px;
+    cursor: pointer;
+    margin: 6px
+}
+
+.vrf-invalid {
+    border-color: #ef2927 !important;
+    box-shadow: 0 0 0 2px rgba(239, 41, 39, 0.08)
+}
+
+#vrf-message {
+    margin-top: 12px;
+    text-align: center
+}
+
+@media(max-width:720px) {
+    .vrf-row-inline {
+        flex-direction: column
+    }
+
+    .vrf-container {
+        padding: 10px
+    }
+}

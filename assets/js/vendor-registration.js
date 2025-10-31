@@ -3,6 +3,9 @@
         var $form = $('#vendor-registration-form');
         var $panels = $('.vrf-panel');
         var current = 1;
+        
+        // Trigger country change on page load to populate states for India
+        $('#vrf-country').trigger('change');
 
         // Toast notification function
         function showToast(message, type) {
@@ -57,6 +60,19 @@
         function validateIFSC(ifsc) {
             var re = /^[A-Z]{4}0[A-Z0-9]{6}$/;
             return re.test(ifsc);
+        }
+        
+        function validateUdyam(udyam) {
+            // Udyam format: UDYAM-XX-00-0000000 (19 characters)
+            // Note: This validates the format structure but not actual state codes
+            var re = /^UDYAM-[A-Z]{2}-\d{2}-\d{7}$/;
+            return re.test(udyam);
+        }
+        
+        function validateAccountNumber(account) {
+            // Account number should be 9-18 digits
+            var re = /^[0-9]{9,18}$/;
+            return re.test(account);
         }
 
         function validateFile(input) {
@@ -124,7 +140,21 @@
             // IFSC validation
             if (name === 'ifsc' && val && !validateIFSC(val)) {
                 $this.addClass('vrf-invalid');
-                $this.after('<span class="vrf-error">Invalid IFSC code</span>');
+                $this.after('<span class="vrf-error">Invalid IFSC code (e.g., ABCD0123456)</span>');
+                return;
+            }
+            
+            // Udyam number validation
+            if (name === 'udyam_number' && val && !validateUdyam(val)) {
+                $this.addClass('vrf-invalid');
+                $this.after('<span class="vrf-error">Invalid Udyam format (e.g., UDYAM-XX-00-0000000)</span>');
+                return;
+            }
+            
+            // Account number validation
+            if (name === 'bank_account' && val && !validateAccountNumber(val)) {
+                $this.addClass('vrf-invalid');
+                $this.after('<span class="vrf-error">Invalid account number (9-18 digits)</span>');
                 return;
             }
         });
@@ -142,6 +172,36 @@
                 $this.val('');
                 showToast(result, 'error');
             }
+        });
+
+        // Helper function for conditional field management
+        function toggleConditionalFields(containerSelector, fieldSelector, shouldShow, isRequired) {
+            var $container = $(containerSelector);
+            var $fields = $(fieldSelector);
+            
+            if (shouldShow) {
+                $container.show();
+                $fields.prop('required', isRequired);
+            } else {
+                $container.hide();
+                $fields.prop('required', false).removeClass('vrf-invalid').val('');
+                $container.find('.vrf-error').remove();
+                // Clear radio buttons
+                $fields.filter(':radio').prop('checked', false);
+            }
+        }
+
+        // GST Registration conditional fields
+        $('input[name="gst_registered"]').on('change', function() {
+            var isGSTYes = $(this).val() === 'yes';
+            toggleConditionalFields('.vrf-gst-fields', '.vrf-gst-conditional, .vrf-gst-conditional-radio', isGSTYes, true);
+        });
+
+        // MSME Registration conditional fields
+        $('input[name="msme_registered"]').on('change', function() {
+            var isMSMEYes = $(this).val() === 'yes';
+            toggleConditionalFields('.vrf-msme-yes-fields', '.vrf-msme-conditional', isMSMEYes, true);
+            toggleConditionalFields('.vrf-msme-no-fields', '.vrf-msme-no-conditional', !isMSMEYes, true);
         });
 
         // Country change - load states
@@ -214,8 +274,14 @@
         $('.vrf-next').on('click', function(){
             // Validate current panel before moving forward
             var isValid = true;
-            $('.vrf-panel[data-panel="'+current+'"]').find('input, select, textarea').each(function() {
+            var $currentPanel = $('.vrf-panel[data-panel="'+current+'"]');
+            
+            // Check required fields
+            $currentPanel.find('input, select, textarea').each(function() {
                 var $this = $(this);
+                // Skip hidden elements
+                if (!$this.is(':visible')) return;
+                
                 if ($this.prop('required') && !$this.val()) {
                     $this.addClass('vrf-invalid');
                     isValid = false;
@@ -223,6 +289,43 @@
                     isValid = false;
                 }
             });
+            
+            // Special validation for vendor type checkboxes (Step 1)
+            if (current === 1) {
+                var vendorTypeChecked = $currentPanel.find('.vrf-vendor-type:checked').length > 0;
+                if (!vendorTypeChecked) {
+                    showToast('Please select at least one Vendor Type', 'error');
+                    isValid = false;
+                }
+            }
+            
+            // Special validation for GST radio buttons (Step 2)
+            if (current === 2) {
+                var gstRadioChecked = $('input[name="gst_registered"]:checked').length > 0;
+                if (!gstRadioChecked) {
+                    showToast('Please select GST Registration status', 'error');
+                    isValid = false;
+                }
+                
+                // If GST is Yes, validate GST conditional radios
+                if ($('input[name="gst_registered"]:checked').val() === 'yes') {
+                    var einvoiceChecked = $('input[name="einvoice_applicability"]:checked').length > 0;
+                    var filingChecked = $('input[name="return_filing_frequency"]:checked').length > 0;
+                    if (!einvoiceChecked || !filingChecked) {
+                        showToast('Please fill all required GST fields', 'error');
+                        isValid = false;
+                    }
+                }
+            }
+            
+            // Special validation for MSME radio buttons (Step 3)
+            if (current === 3) {
+                var msmeRadioChecked = $('input[name="msme_registered"]:checked').length > 0;
+                if (!msmeRadioChecked) {
+                    showToast('Please select MSME Registration status', 'error');
+                    isValid = false;
+                }
+            }
             
             if (!isValid) {
                 showToast('Please fill all required fields correctly', 'error');
@@ -249,9 +352,12 @@
             e.preventDefault();
 
             // Validate all required fields
-            var $required = $form.find('[required]');
             var allOk = true;
+            var $required = $form.find('[required]');
             $required.each(function(){
+                // Skip hidden elements
+                if (!$(this).is(':visible')) return;
+                
                 if (!$(this).val()) {
                     $(this).addClass('vrf-invalid');
                     allOk = false;
@@ -261,16 +367,36 @@
             });
             
             // Check for any validation errors
-            if ($form.find('.vrf-invalid').length > 0) {
+            if ($form.find('.vrf-invalid:visible').length > 0) {
+                allOk = false;
+            }
+            
+            // Validate vendor type
+            if ($('.vrf-vendor-type:checked').length === 0) {
+                showToast('Please select at least one Vendor Type', 'error');
+                allOk = false;
+            }
+            
+            // Validate GST radio
+            if ($('input[name="gst_registered"]:checked').length === 0) {
+                showToast('Please select GST Registration status', 'error');
+                allOk = false;
+            }
+            
+            // Validate MSME radio
+            if ($('input[name="msme_registered"]:checked').length === 0) {
+                showToast('Please select MSME Registration status', 'error');
                 allOk = false;
             }
             
             if (!allOk) {
                 showToast('Please fill all required fields correctly', 'error');
                 // Navigate to first invalid
-                var $first = $form.find('.vrf-invalid').first();
-                var $panel = $first.closest('.vrf-panel');
-                showPanel(parseInt($panel.data('panel'),10));
+                var $first = $form.find('.vrf-invalid:visible').first();
+                if ($first.length > 0) {
+                    var $panel = $first.closest('.vrf-panel');
+                    showPanel(parseInt($panel.data('panel'),10));
+                }
                 return;
             }
 

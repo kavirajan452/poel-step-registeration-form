@@ -37,6 +37,14 @@ class VRF_Plugin {
         add_action( 'admin_init', [ $this, 'handle_export' ] );
         add_filter( 'bulk_actions-edit-registrations', [ $this, 'add_bulk_export_action' ] );
         add_filter( 'handle_bulk_actions-edit-registrations', [ $this, 'handle_bulk_export' ], 10, 3 );
+        
+        // Email settings page
+        add_action( 'admin_menu', [ $this, 'add_email_settings_menu' ] );
+        add_action( 'admin_init', [ $this, 'register_email_settings' ] );
+        
+        // Prevent editing and trashing of registrations
+        add_filter( 'user_has_cap', [ $this, 'remove_edit_trash_capabilities' ], 10, 3 );
+        add_filter( 'post_row_actions', [ $this, 'remove_row_actions' ], 10, 2 );
     }
 
     // Register CPT "registrations"
@@ -774,8 +782,15 @@ class VRF_Plugin {
         $org_name = isset( $data['organisation_name'] ) ? $data['organisation_name'] : $form_type;
         $user_email = isset( $data['purchase_contact_email'] ) ? $data['purchase_contact_email'] : '';
         
-        // Get admin email
-        $admin_email = get_option( 'admin_email' );
+        // Get admin email based on form type
+        $form_type_lower = strtolower( $form_type );
+        $admin_email_option = 'vrf_' . $form_type_lower . '_admin_email';
+        $cc_option = 'vrf_' . $form_type_lower . '_cc';
+        $bcc_option = 'vrf_' . $form_type_lower . '_bcc';
+        
+        $admin_email = get_option( $admin_email_option, get_option( 'admin_email' ) );
+        $cc_emails = get_option( $cc_option, '' );
+        $bcc_emails = get_option( $bcc_option, '' );
         
         // Send acknowledgement email to user
         if ( ! empty( $user_email ) && is_email( $user_email ) ) {
@@ -797,6 +812,26 @@ class VRF_Plugin {
             
             $headers = array( 'Content-Type: text/html; charset=UTF-8' );
             
+            // Add CC recipients
+            if ( ! empty( $cc_emails ) ) {
+                $cc_array = array_map( 'trim', explode( ',', $cc_emails ) );
+                foreach ( $cc_array as $cc_email ) {
+                    if ( is_email( $cc_email ) ) {
+                        $headers[] = 'Cc: ' . $cc_email;
+                    }
+                }
+            }
+            
+            // Add BCC recipients
+            if ( ! empty( $bcc_emails ) ) {
+                $bcc_array = array_map( 'trim', explode( ',', $bcc_emails ) );
+                foreach ( $bcc_array as $bcc_email ) {
+                    if ( is_email( $bcc_email ) ) {
+                        $headers[] = 'Bcc: ' . $bcc_email;
+                    }
+                }
+            }
+            
             // Attach files to admin email
             $attachments = array();
             foreach ( $uploaded as $field => $attach_id ) {
@@ -806,10 +841,16 @@ class VRF_Plugin {
                 }
             }
             
-            $admin_email_sent = wp_mail( $admin_email, $admin_subject, $admin_message, $headers, $attachments );
+            // Handle multiple admin emails
+            $admin_email_array = array_map( 'trim', explode( ',', $admin_email ) );
+            $valid_admin_emails = array_filter( $admin_email_array, 'is_email' );
             
-            if ( ! $admin_email_sent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                error_log( 'VRF: Failed to send admin notification email to ' . $admin_email );
+            if ( ! empty( $valid_admin_emails ) ) {
+                $admin_email_sent = wp_mail( $valid_admin_emails, $admin_subject, $admin_message, $headers, $attachments );
+                
+                if ( ! $admin_email_sent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'VRF: Failed to send admin notification email to ' . implode( ', ', $valid_admin_emails ) );
+                }
             }
         }
     }
@@ -1415,6 +1456,147 @@ class VRF_Plugin {
         );
     }
     
+    // Add email settings menu page
+    public function add_email_settings_menu() {
+        add_submenu_page(
+            'edit.php?post_type=registrations',
+            'Email Settings',
+            'Email Settings',
+            'manage_options',
+            'vrf-email-settings',
+            [ $this, 'render_email_settings_page' ]
+        );
+    }
+    
+    // Register email settings
+    public function register_email_settings() {
+        // Vendor form email settings
+        register_setting( 'vrf_email_settings', 'vrf_vendor_admin_email' );
+        register_setting( 'vrf_email_settings', 'vrf_vendor_cc' );
+        register_setting( 'vrf_email_settings', 'vrf_vendor_bcc' );
+        
+        // Customer form email settings
+        register_setting( 'vrf_email_settings', 'vrf_customer_admin_email' );
+        register_setting( 'vrf_email_settings', 'vrf_customer_cc' );
+        register_setting( 'vrf_email_settings', 'vrf_customer_bcc' );
+    }
+    
+    // Render email settings page
+    public function render_email_settings_page() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+        
+        // Handle form submission
+        if ( isset( $_POST['vrf_email_settings_submit'] ) && check_admin_referer( 'vrf_email_settings_action', 'vrf_email_settings_nonce' ) ) {
+            update_option( 'vrf_vendor_admin_email', sanitize_text_field( $_POST['vrf_vendor_admin_email'] ) );
+            update_option( 'vrf_vendor_cc', sanitize_text_field( $_POST['vrf_vendor_cc'] ) );
+            update_option( 'vrf_vendor_bcc', sanitize_text_field( $_POST['vrf_vendor_bcc'] ) );
+            update_option( 'vrf_customer_admin_email', sanitize_text_field( $_POST['vrf_customer_admin_email'] ) );
+            update_option( 'vrf_customer_cc', sanitize_text_field( $_POST['vrf_customer_cc'] ) );
+            update_option( 'vrf_customer_bcc', sanitize_text_field( $_POST['vrf_customer_bcc'] ) );
+            
+            echo '<div class="notice notice-success is-dismissible"><p>Email settings saved successfully.</p></div>';
+        }
+        
+        // Get current values
+        $vendor_admin_email = get_option( 'vrf_vendor_admin_email', get_option( 'admin_email' ) );
+        $vendor_cc = get_option( 'vrf_vendor_cc', '' );
+        $vendor_bcc = get_option( 'vrf_vendor_bcc', '' );
+        $customer_admin_email = get_option( 'vrf_customer_admin_email', get_option( 'admin_email' ) );
+        $customer_cc = get_option( 'vrf_customer_cc', '' );
+        $customer_bcc = get_option( 'vrf_customer_bcc', '' );
+        
+        ?>
+        <div class="wrap">
+            <h1>Email Settings</h1>
+            <p>Configure email recipients for vendor and customer registration form submissions.</p>
+            
+            <form method="post" action="">
+                <?php wp_nonce_field( 'vrf_email_settings_action', 'vrf_email_settings_nonce' ); ?>
+                
+                <div class="card" style="max-width: 800px; margin-top: 20px;">
+                    <h2>Vendor Form Email Settings</h2>
+                    <p>Configure where vendor registration notifications are sent.</p>
+                    
+                    <table class="form-table" role="presentation">
+                        <tbody>
+                            <tr>
+                                <th scope="row"><label for="vrf_vendor_admin_email">Admin Email Recipients *</label></th>
+                                <td>
+                                    <input type="text" name="vrf_vendor_admin_email" id="vrf_vendor_admin_email" 
+                                           value="<?php echo esc_attr( $vendor_admin_email ); ?>" 
+                                           class="regular-text" required />
+                                    <p class="description">Primary email recipient(s). Use commas to separate multiple emails.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="vrf_vendor_cc">CC Recipients</label></th>
+                                <td>
+                                    <input type="text" name="vrf_vendor_cc" id="vrf_vendor_cc" 
+                                           value="<?php echo esc_attr( $vendor_cc ); ?>" 
+                                           class="regular-text" />
+                                    <p class="description">CC email recipient(s). Use commas to separate multiple emails.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="vrf_vendor_bcc">BCC Recipients</label></th>
+                                <td>
+                                    <input type="text" name="vrf_vendor_bcc" id="vrf_vendor_bcc" 
+                                           value="<?php echo esc_attr( $vendor_bcc ); ?>" 
+                                           class="regular-text" />
+                                    <p class="description">BCC email recipient(s). Use commas to separate multiple emails.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="card" style="max-width: 800px; margin-top: 20px;">
+                    <h2>Customer Form Email Settings</h2>
+                    <p>Configure where customer registration notifications are sent.</p>
+                    
+                    <table class="form-table" role="presentation">
+                        <tbody>
+                            <tr>
+                                <th scope="row"><label for="vrf_customer_admin_email">Admin Email Recipients *</label></th>
+                                <td>
+                                    <input type="text" name="vrf_customer_admin_email" id="vrf_customer_admin_email" 
+                                           value="<?php echo esc_attr( $customer_admin_email ); ?>" 
+                                           class="regular-text" required />
+                                    <p class="description">Primary email recipient(s). Use commas to separate multiple emails.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="vrf_customer_cc">CC Recipients</label></th>
+                                <td>
+                                    <input type="text" name="vrf_customer_cc" id="vrf_customer_cc" 
+                                           value="<?php echo esc_attr( $customer_cc ); ?>" 
+                                           class="regular-text" />
+                                    <p class="description">CC email recipient(s). Use commas to separate multiple emails.</p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th scope="row"><label for="vrf_customer_bcc">BCC Recipients</label></th>
+                                <td>
+                                    <input type="text" name="vrf_customer_bcc" id="vrf_customer_bcc" 
+                                           value="<?php echo esc_attr( $customer_bcc ); ?>" 
+                                           class="regular-text" />
+                                    <p class="description">BCC email recipient(s). Use commas to separate multiple emails.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <p class="submit" style="padding-left: 0;">
+                    <button type="submit" name="vrf_email_settings_submit" class="button button-primary">Save Email Settings</button>
+                </p>
+            </form>
+        </div>
+        <?php
+    }
+    
     // Render export page
     public function render_export_page() {
         ?>
@@ -1794,6 +1976,34 @@ class VRF_Plugin {
         );
         
         return $countries;
+    }
+    
+    // Remove edit and trash capabilities for registrations post type
+    public function remove_edit_trash_capabilities( $allcaps, $caps, $args ) {
+        // Only apply to registrations post type
+        if ( isset( $args[2] ) && get_post_type( $args[2] ) === 'registrations' ) {
+            // Remove edit capability
+            if ( isset( $args[0] ) && $args[0] === 'edit_post' ) {
+                $allcaps['edit_post'] = false;
+            }
+            // Remove delete capability (trashing)
+            if ( isset( $args[0] ) && $args[0] === 'delete_post' ) {
+                $allcaps['delete_post'] = false;
+            }
+        }
+        
+        return $allcaps;
+    }
+    
+    // Remove edit and trash row actions from registrations list
+    public function remove_row_actions( $actions, $post ) {
+        if ( $post->post_type === 'registrations' ) {
+            unset( $actions['edit'] );
+            unset( $actions['trash'] );
+            unset( $actions['inline hide-if-no-js'] );
+        }
+        
+        return $actions;
     }
 
     // Database setup for location tables

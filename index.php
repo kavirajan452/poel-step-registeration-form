@@ -506,7 +506,265 @@ class VRF_Plugin {
         // Additionally save full raw POST for reference
         update_post_meta( $post_id, '_vrf_raw_post', wp_json_encode( $data ) );
 
+        // Send emails to user and admin
+        $this->send_registration_emails( $post_id, $data, $uploaded );
+
         wp_send_json_success( array( 'message' => 'Registration submitted successfully.' ) );
+    }
+
+    // Send email notifications to user and admin
+    private function send_registration_emails( $post_id, $data, $uploaded ) {
+        $org_name = isset( $data['organisation_name'] ) ? $data['organisation_name'] : 'Vendor';
+        $user_email = isset( $data['purchase_contact_email'] ) ? $data['purchase_contact_email'] : '';
+        
+        // Get admin email
+        $admin_email = get_option( 'admin_email' );
+        
+        // Send acknowledgement email to user
+        if ( ! empty( $user_email ) && is_email( $user_email ) ) {
+            $user_subject = 'Thank You for Your Vendor Registration - ' . $org_name;
+            $user_message = $this->get_user_email_template( $data );
+            
+            $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+            wp_mail( $user_email, $user_subject, $user_message, $headers );
+        }
+        
+        // Send detailed email to admin with data
+        if ( ! empty( $admin_email ) ) {
+            $admin_subject = 'New Vendor Registration: ' . $org_name;
+            $admin_message = $this->get_admin_email_template( $post_id, $data, $uploaded );
+            
+            $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+            
+            // Attach files to admin email
+            $attachments = array();
+            foreach ( $uploaded as $field => $attach_id ) {
+                $file_path = get_attached_file( $attach_id );
+                if ( $file_path && file_exists( $file_path ) ) {
+                    $attachments[] = $file_path;
+                }
+            }
+            
+            wp_mail( $admin_email, $admin_subject, $admin_message, $headers, $attachments );
+        }
+    }
+
+    // User email template (acknowledgement)
+    private function get_user_email_template( $data ) {
+        $org_name = isset( $data['organisation_name'] ) ? esc_html( $data['organisation_name'] ) : 'Vendor';
+        $contact_name = isset( $data['purchase_contact_name'] ) ? esc_html( $data['purchase_contact_name'] ) : '';
+        
+        $message = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #163a6b; color: white; padding: 20px; text-align: center; }
+        .content { background: #f9f9f9; padding: 30px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .highlight { color: #ef2927; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Vendor Registration Confirmation</h1>
+        </div>
+        <div class="content">
+            <p>Dear ' . $contact_name . ',</p>
+            
+            <p>Thank you for registering with <span class="highlight">POEL</span>.</p>
+            
+            <p>We have successfully received your vendor registration for <strong>' . $org_name . '</strong>.</p>
+            
+            <p>Our team will review your application and contact you shortly. If you have any questions in the meantime, please feel free to reach out to us.</p>
+            
+            <p><strong>What happens next?</strong></p>
+            <ul>
+                <li>Our team will review your submitted information and documents</li>
+                <li>We will verify the details provided</li>
+                <li>You will be contacted within 3-5 business days</li>
+            </ul>
+            
+            <p>Thank you for your interest in partnering with us.</p>
+            
+            <p>Best regards,<br>
+            <strong>POEL Team</strong></p>
+        </div>
+        <div class="footer">
+            <p>This is an automated message. Please do not reply to this email.</p>
+            <p>&copy; ' . date('Y') . ' POEL. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>';
+        
+        return $message;
+    }
+
+    // Admin email template (with all data)
+    private function get_admin_email_template( $post_id, $data, $uploaded ) {
+        $org_name = isset( $data['organisation_name'] ) ? esc_html( $data['organisation_name'] ) : 'N/A';
+        
+        $message = '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .header { background: #163a6b; color: white; padding: 20px; text-align: center; }
+        .content { background: #fff; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; background: #f9f9f9; border-left: 4px solid #ef2927; }
+        .section-title { color: #163a6b; font-weight: bold; margin-bottom: 10px; font-size: 18px; }
+        .field { margin: 8px 0; }
+        .field-label { font-weight: bold; color: #666; display: inline-block; min-width: 200px; }
+        .field-value { color: #333; }
+        .files { margin-top: 10px; }
+        .file-link { display: block; padding: 5px 0; color: #17a2b8; text-decoration: none; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>New Vendor Registration</h1>
+            <p>' . $org_name . '</p>
+        </div>
+        <div class="content">
+            <p><strong>Submission Date:</strong> ' . date( 'F j, Y, g:i a' ) . '</p>
+            <p><strong>Registration ID:</strong> #' . $post_id . '</p>
+            
+            <div class="section">
+                <div class="section-title">Basic Information</div>
+                ' . $this->format_field( 'Organisation Name', $data, 'organisation_name' ) . '
+                ' . $this->format_field( 'Company Registration Number', $data, 'company_registration_number' ) . '
+                ' . $this->format_field( 'IEC Code', $data, 'iec_code' ) . '
+                ' . $this->format_field( 'Street Address', $data, 'street_address' ) . '
+                ' . $this->format_field( 'Street Address Line 2', $data, 'street_address_2' ) . '
+                ' . $this->format_field( 'Country', $data, 'country' ) . '
+                ' . $this->format_field( 'State', $data, 'state' ) . '
+                ' . $this->format_field( 'City', $data, 'city' ) . '
+                ' . $this->format_field( 'Zip Code', $data, 'zip' ) . '
+                ' . $this->format_field( 'Vendor Type', $data, 'vendor_type', true ) . '
+                ' . $this->format_field( 'Products/Services Offered', $data, 'products' ) . '
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Contact Information</div>
+                ' . $this->format_field( 'Purchase Contact Name', $data, 'purchase_contact_name' ) . '
+                ' . $this->format_field( 'Purchase Contact Phone', $data, 'purchase_contact_phone' ) . '
+                ' . $this->format_field( 'Purchase Contact Email', $data, 'purchase_contact_email' ) . '
+                ' . $this->format_field( 'Accounts Contact Name', $data, 'accounts_contact_name' ) . '
+                ' . $this->format_field( 'Accounts Contact Phone', $data, 'accounts_contact_phone' ) . '
+                ' . $this->format_field( 'Accounts Contact Email', $data, 'accounts_contact_email' ) . '
+            </div>
+            
+            <div class="section">
+                <div class="section-title">GST Information</div>
+                ' . $this->format_field( 'GST Registered', $data, 'gst_registered' ) . '
+                ' . $this->format_field( 'GST Number', $data, 'gst_number' ) . '
+                ' . $this->format_field( 'Legal Name (as per GST)', $data, 'gst_legal_name' ) . '
+                ' . $this->format_field( 'Tax Payer Type', $data, 'taxpayer_type' ) . '
+                ' . $this->format_field( 'E-Invoice Applicability', $data, 'einvoice_applicability' ) . '
+                ' . $this->format_field( 'Return Filing Frequency', $data, 'return_filing_frequency' ) . '
+            </div>
+            
+            <div class="section">
+                <div class="section-title">MSME Information</div>
+                ' . $this->format_field( 'MSME Registered', $data, 'msme_registered' ) . '
+                ' . $this->format_field( 'MSME Type', $data, 'msme_type' ) . '
+                ' . $this->format_field( 'Udyam Registration Number', $data, 'udyam_number' ) . '
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Bank Details</div>
+                ' . $this->format_field( 'Beneficiary Name', $data, 'beneficiary_name' ) . '
+                ' . $this->format_field( 'Bank Name', $data, 'bank_name' ) . '
+                ' . $this->format_field( 'Branch Name', $data, 'branch_name' ) . '
+                ' . $this->format_field( 'Bank Account Number', $data, 'bank_account' ) . '
+                ' . $this->format_field( 'IFSC Code', $data, 'ifsc' ) . '
+            </div>
+            
+            <div class="section">
+                <div class="section-title">TDS Information</div>
+                ' . $this->format_field( 'PAN Number', $data, 'pan_number' ) . '
+                ' . $this->format_field( 'PAN Type', $data, 'pan_type' ) . '
+            </div>
+            
+            <div class="section">
+                <div class="section-title">Uploaded Files</div>
+                <div class="files">
+                    ' . $this->format_uploaded_files( $uploaded ) . '
+                </div>
+                <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                    <em>All files are attached to this email for your convenience.</em>
+                </p>
+            </div>
+            
+            <p style="margin-top: 30px;">
+                <a href="' . admin_url( 'post.php?post=' . $post_id . '&action=edit' ) . '" 
+                   style="display: inline-block; padding: 12px 24px; background: #ef2927; color: white; 
+                          text-decoration: none; border-radius: 4px;">
+                    View in Admin Dashboard
+                </a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>&copy; ' . date('Y') . ' POEL Vendor Registration System</p>
+        </div>
+    </div>
+</body>
+</html>';
+        
+        return $message;
+    }
+
+    // Helper to format individual fields for email
+    private function format_field( $label, $data, $key, $is_array = false ) {
+        if ( ! isset( $data[ $key ] ) || empty( $data[ $key ] ) ) {
+            return '';
+        }
+        
+        $value = $data[ $key ];
+        if ( $is_array && is_array( $value ) ) {
+            $value = implode( ', ', $value );
+        }
+        
+        return '<div class="field">
+            <span class="field-label">' . esc_html( $label ) . ':</span>
+            <span class="field-value">' . esc_html( $value ) . '</span>
+        </div>';
+    }
+
+    // Helper to format uploaded files list for email
+    private function format_uploaded_files( $uploaded ) {
+        if ( empty( $uploaded ) ) {
+            return '<p>No files uploaded.</p>';
+        }
+        
+        $file_labels = array(
+            'company_registration_file' => 'Company Registration File',
+            'gst_certificate' => 'GST Certificate',
+            'udyam_certificate' => 'Udyam Certificate',
+            'msme_declaration_signed' => 'MSME Declaration (Signed)',
+            'bank_proof' => 'Bank Proof/Cancelled Cheque',
+            'pan_card' => 'PAN Card',
+        );
+        
+        $output = '';
+        foreach ( $uploaded as $field => $attach_id ) {
+            $url = wp_get_attachment_url( $attach_id );
+            $label = isset( $file_labels[ $field ] ) ? $file_labels[ $field ] : ucwords( str_replace( '_', ' ', $field ) );
+            
+            if ( $url ) {
+                $output .= '<a href="' . esc_url( $url ) . '" class="file-link" target="_blank">📎 ' . esc_html( $label ) . '</a>';
+            }
+        }
+        
+        return $output;
     }
 
     // Admin columns

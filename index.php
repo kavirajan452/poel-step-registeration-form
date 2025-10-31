@@ -150,7 +150,7 @@ class VRF_Plugin {
                         <label>Country</label>
                         <select name="country" id="vrf-country">
                             <option value="">Select Country</option>
-                            <option value="India" selected>India</option>
+                            <option value="India">India</option>
                             <option value="USA">USA</option>
                             <option value="UK">UK</option>
                         </select>
@@ -465,7 +465,7 @@ class VRF_Plugin {
                         <label>Country *</label>
                         <select name="country" id="crf-country" required>
                             <option value="">Select Country</option>
-                            <option value="India" selected>India</option>
+                            <option value="India">India</option>
                             <option value="USA">USA</option>
                             <option value="UK">UK</option>
                         </select>

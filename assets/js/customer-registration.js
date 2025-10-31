@@ -7,9 +7,6 @@
         // File upload constraints
         var MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
         var ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'application/pdf'];
-        
-        // Trigger country change on page load to populate states for India
-        $('#crf-country').trigger('change');
 
         // Toast notification function
         function showToast(message, type) {
@@ -338,8 +335,15 @@
             }
         });
 
+        var isSubmitting = false; // Flag to prevent multiple submissions
+
         $form.on('submit', function(e){
             e.preventDefault();
+
+            // Prevent multiple submissions
+            if (isSubmitting) {
+                return;
+            }
 
             // Validate all required fields
             var allOk = true;
@@ -393,11 +397,17 @@
                 return;
             }
 
+            // Show loader and disable submit button
+            isSubmitting = true;
+            var $submitBtn = $form.find('.vrf-submit');
+            $submitBtn.prop('disabled', true).css('opacity', '0.6');
+            
+            var $loader = $('<div class="vrf-loader-overlay"><div><div class="vrf-loader"></div><div class="vrf-loader-text">Submitting your registration...</div></div></div>');
+            $('body').append($loader);
+
             // Build FormData for AJAX including files
             var fd = new FormData( $form[0] );
             fd.append('action', 'vrf_submit');
-
-            showToast('Submitting your registration...', 'info');
 
             $.ajax({
                 url: vrf_ajax.ajax_url,
@@ -406,6 +416,11 @@
                 contentType: false,
                 processData: false,
                 success: function(resp){
+                    // Remove loader
+                    $loader.remove();
+                    isSubmitting = false;
+                    $submitBtn.prop('disabled', false).css('opacity', '1');
+                    
                     if (resp.success) {
                         showToast(resp.data.message || 'Registration submitted successfully!', 'success');
                         $form[0].reset();
@@ -417,6 +432,11 @@
                     }
                 },
                 error: function(){
+                    // Remove loader
+                    $loader.remove();
+                    isSubmitting = false;
+                    $submitBtn.prop('disabled', false).css('opacity', '1');
+                    
                     showToast('An error occurred during submission. Please try again.', 'error');
                 }
             });

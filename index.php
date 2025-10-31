@@ -55,24 +55,41 @@ class VRF_Plugin {
 
     // Enqueue JS/CSS
     public function enqueue_assets() {
-        if ( ! is_singular() && ! is_page() && ! has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'vendor_registration_form' ) && ! has_shortcode( get_post_field( 'post_content', get_the_ID() ), 'customer_registration_form' ) ) {
-            // we will enqueue only when shortcode present; but WP doesn't give easy way here — enqueue unconditionally on frontend
+        // Check if page has either shortcode
+        $content = get_post_field( 'post_content', get_the_ID() );
+        $has_vendor_form = has_shortcode( $content, 'vendor_registration_form' );
+        $has_customer_form = has_shortcode( $content, 'customer_registration_form' );
+        
+        if ( ! is_singular() && ! is_page() && ! $has_vendor_form && ! $has_customer_form ) {
+            // Don't enqueue if no shortcode present
+            return;
         }
-        wp_register_script( 'vendor-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/vendor-registration.js', array('jquery'), '1.0', true );
-        wp_register_script( 'customer-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/customer-registration.js', array('jquery'), '1.0', true );
-        wp_register_style( 'vendor-registration-css', plugin_dir_url( __FILE__ ) . 'assets/css/vendor-registration.css', array(), '1.0' );
-        wp_enqueue_script( 'vendor-registration-js' );
-        wp_enqueue_script( 'customer-registration-js' );
+        
+        // Register scripts
+        wp_register_script( 'vendor-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/vendor-registration.js', array('jquery'), '1.1', true );
+        wp_register_script( 'customer-registration-js', plugin_dir_url( __FILE__ ) . 'assets/js/customer-registration.js', array('jquery'), '1.1', true );
+        wp_register_style( 'vendor-registration-css', plugin_dir_url( __FILE__ ) . 'assets/css/vendor-registration.css', array(), '1.1' );
+        
+        // Enqueue CSS (shared by both forms)
         wp_enqueue_style( 'vendor-registration-css' );
-
-        wp_localize_script( 'vendor-registration-js', 'vrf_ajax', array(
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'vrf_nonce' ),
-        ) );
-        wp_localize_script( 'customer-registration-js', 'vrf_ajax', array(
-            'ajax_url' => admin_url( 'admin-ajax.php' ),
-            'nonce'    => wp_create_nonce( 'vrf_nonce' ),
-        ) );
+        
+        // Enqueue vendor JS only if vendor form is present
+        if ( $has_vendor_form ) {
+            wp_enqueue_script( 'vendor-registration-js' );
+            wp_localize_script( 'vendor-registration-js', 'vrf_ajax', array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'vrf_nonce' ),
+            ) );
+        }
+        
+        // Enqueue customer JS only if customer form is present
+        if ( $has_customer_form ) {
+            wp_enqueue_script( 'customer-registration-js' );
+            wp_localize_script( 'customer-registration-js', 'vrf_ajax', array(
+                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                'nonce'    => wp_create_nonce( 'vrf_nonce' ),
+            ) );
+        }
     }
 
     // Shortcode output (form)

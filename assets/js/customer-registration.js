@@ -4,6 +4,10 @@
         var $panels = $('.vrf-panel');
         var current = 1;
         
+        // File upload constraints
+        var MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
+        var ALLOWED_FILE_TYPES = ['image/jpeg', 'image/jpg', 'application/pdf'];
+        
         // Trigger country change on page load to populate states for India
         $('#crf-country').trigger('change');
 
@@ -65,14 +69,12 @@
         function validateFile(input) {
             if (input.files && input.files[0]) {
                 var file = input.files[0];
-                var maxSize = 2 * 1024 * 1024; // 2MB
-                var allowedTypes = ['image/jpeg', 'image/jpg', 'application/pdf'];
                 
-                if (file.size > maxSize) {
+                if (file.size > MAX_FILE_SIZE) {
                     return 'File size must not exceed 2MB';
                 }
                 
-                if (allowedTypes.indexOf(file.type) === -1) {
+                if (ALLOWED_FILE_TYPES.indexOf(file.type) === -1) {
                     return 'File must be jpg, jpeg, or pdf format';
                 }
             }

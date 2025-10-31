@@ -278,8 +278,8 @@
             });
         });
 
-        $('.vrf-next').on('click', function(){
-            // Validate current panel before moving forward
+        // Validate current panel function (reusable for both Next button and tab clicks)
+        function validateCurrentPanel() {
             var isValid = true;
             var $currentPanel = $('.vrf-panel[data-panel="'+current+'"]');
             
@@ -360,6 +360,12 @@
                 }
             }
             
+            return isValid;
+        }
+
+        $('.vrf-next').on('click', function(){
+            var isValid = validateCurrentPanel();
+            
             if (!isValid) {
                 showToast('Please fill all required fields correctly', 'error');
                 return;
@@ -378,7 +384,26 @@
 
         $('.vrf-step').on('click', function(){
             var step = parseInt($(this).data('step'),10);
-            showPanel(step);
+            
+            // If clicking on current step, do nothing
+            if (step === current) {
+                return;
+            }
+            
+            // If clicking on a previous step, allow navigation
+            if (step < current) {
+                showPanel(step);
+            } else {
+                // Clicking on a future step, validate current step first
+                var isValid = validateCurrentPanel();
+                
+                if (!isValid) {
+                    showToast('Please complete the current step before proceeding', 'error');
+                    return;
+                }
+                
+                showPanel(step);
+            }
         });
 
         $form.on('submit', function(e){

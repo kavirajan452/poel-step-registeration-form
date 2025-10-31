@@ -27,6 +27,9 @@ class VRF_Plugin {
         add_filter( 'manage_edit-registrations_sortable_columns', function($cols){ return $cols; } );
         add_filter( 'restrict_manage_posts', [ $this, 'admin_filter_dropdown' ] );
         add_filter( 'parse_query', [ $this, 'admin_filter_query' ] );
+        
+        // Admin meta boxes for post edit screen
+        add_action( 'add_meta_boxes', [ $this, 'add_registration_meta_boxes' ] );
     }
 
     // Register CPT "registrations"
@@ -932,6 +935,205 @@ class VRF_Plugin {
         }
         
         wp_send_json_success( array( 'cities' => $cities ) );
+    }
+
+    // Add meta boxes to registration post edit screen
+    public function add_registration_meta_boxes() {
+        add_meta_box(
+            'vrf_basic_info',
+            'Basic Information',
+            [ $this, 'render_basic_info_meta_box' ],
+            'registrations',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'vrf_contact_info',
+            'Contact Information',
+            [ $this, 'render_contact_info_meta_box' ],
+            'registrations',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'vrf_gst_info',
+            'GST Information',
+            [ $this, 'render_gst_info_meta_box' ],
+            'registrations',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'vrf_msme_info',
+            'MSME Information',
+            [ $this, 'render_msme_info_meta_box' ],
+            'registrations',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'vrf_bank_info',
+            'Bank Details',
+            [ $this, 'render_bank_info_meta_box' ],
+            'registrations',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'vrf_tds_info',
+            'TDS Information',
+            [ $this, 'render_tds_info_meta_box' ],
+            'registrations',
+            'normal',
+            'high'
+        );
+        
+        add_meta_box(
+            'vrf_files',
+            'Uploaded Files',
+            [ $this, 'render_files_meta_box' ],
+            'registrations',
+            'side',
+            'default'
+        );
+    }
+
+    // Render Basic Information meta box
+    public function render_basic_info_meta_box( $post ) {
+        $this->render_meta_fields( $post->ID, array(
+            'form_type' => 'Form Type',
+            'organisation_name' => 'Organisation Name',
+            'company_registration_number' => 'Company Registration Number',
+            'iec_code' => 'IEC Code',
+            'street_address' => 'Street Address',
+            'street_address_2' => 'Street Address Line 2',
+            'country' => 'Country',
+            'state' => 'State',
+            'city' => 'City',
+            'zip' => 'Zip Code',
+            'vendor_type' => 'Vendor Type',
+            'products' => 'Products/Services Offered'
+        ) );
+    }
+
+    // Render Contact Information meta box
+    public function render_contact_info_meta_box( $post ) {
+        $this->render_meta_fields( $post->ID, array(
+            'purchase_contact_name' => 'Purchase Contact Name',
+            'purchase_contact_phone' => 'Purchase Contact Phone',
+            'purchase_contact_email' => 'Purchase Contact Email',
+            'accounts_contact_name' => 'Accounts Contact Name',
+            'accounts_contact_phone' => 'Accounts Contact Phone',
+            'accounts_contact_email' => 'Accounts Contact Email'
+        ) );
+    }
+
+    // Render GST Information meta box
+    public function render_gst_info_meta_box( $post ) {
+        $this->render_meta_fields( $post->ID, array(
+            'gst_registered' => 'GST Registered',
+            'gst_number' => 'GST Number',
+            'gst_legal_name' => 'Legal Name (as per GST)',
+            'taxpayer_type' => 'Tax Payer Type',
+            'einvoice_applicability' => 'E-Invoice Applicability',
+            'return_filing_frequency' => 'Return Filing Frequency'
+        ) );
+    }
+
+    // Render MSME Information meta box
+    public function render_msme_info_meta_box( $post ) {
+        $this->render_meta_fields( $post->ID, array(
+            'msme_registered' => 'MSME Registered',
+            'msme_type' => 'MSME Type',
+            'udyam_number' => 'Udyam Registration Number'
+        ) );
+    }
+
+    // Render Bank Details meta box
+    public function render_bank_info_meta_box( $post ) {
+        $this->render_meta_fields( $post->ID, array(
+            'beneficiary_name' => 'Beneficiary Name',
+            'bank_name' => 'Bank Name',
+            'branch_name' => 'Branch Name',
+            'ifsc' => 'IFSC Code',
+            'bank_account' => 'Bank Account Number'
+        ) );
+    }
+
+    // Render TDS Information meta box
+    public function render_tds_info_meta_box( $post ) {
+        $this->render_meta_fields( $post->ID, array(
+            'pan_number' => 'PAN Number',
+            'pan_type' => 'PAN Type'
+        ) );
+    }
+
+    // Render Uploaded Files meta box
+    public function render_files_meta_box( $post ) {
+        $file_fields = array(
+            'company_registration_file' => 'Company Registration File',
+            'gst_certificate' => 'GST Certificate',
+            'udyam_certificate' => 'Udyam Certificate',
+            'msme_declaration_signed' => 'MSME Declaration (Signed)',
+            'bank_proof' => 'Bank Proof/Cancelled Cheque',
+            'pan_card' => 'PAN Card'
+        );
+        
+        // Add minimal inline styles only where WordPress doesn't provide alternatives
+        echo '<style>
+            .vrf-file-item { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-left: 3px solid #2271b1; }
+            .vrf-file-label { display: block; margin-bottom: 5px; font-weight: 600; }
+            .vrf-file-link { color: #2271b1; text-decoration: none; }
+        </style>';
+        
+        echo '<div class="inside">';
+        foreach ( $file_fields as $key => $label ) {
+            $attach_id = get_post_meta( $post->ID, $key, true );
+            if ( $attach_id ) {
+                $url = wp_get_attachment_url( $attach_id );
+                $filename = basename( get_attached_file( $attach_id ) );
+                if ( $url ) {
+                    echo '<div class="vrf-file-item">';
+                    echo '<span class="vrf-file-label">' . esc_html( $label ) . '</span>';
+                    echo '<a href="' . esc_url( $url ) . '" class="vrf-file-link" target="_blank" download>';
+                    echo '📎 ' . esc_html( $filename ) . '</a>';
+                    echo '</div>';
+                }
+            }
+        }
+        echo '</div>';
+    }
+
+    // Helper function to render meta fields
+    private function render_meta_fields( $post_id, $fields ) {
+        echo '<table class="form-table" role="presentation">';
+        echo '<tbody>';
+        foreach ( $fields as $key => $label ) {
+            $value = get_post_meta( $post_id, $key, true );
+            if ( ! empty( $value ) ) {
+                echo '<tr>';
+                echo '<th scope="row">' . esc_html( $label ) . ':</th>';
+                echo '<td>';
+                
+                // Handle array values (like vendor_type)
+                if ( is_array( $value ) ) {
+                    echo esc_html( implode( ', ', $value ) );
+                } else {
+                    // Handle long text with line breaks
+                    echo nl2br( esc_html( $value ) );
+                }
+                
+                echo '</td>';
+                echo '</tr>';
+            }
+        }
+        echo '</tbody>';
+        echo '</table>';
     }
 
 }

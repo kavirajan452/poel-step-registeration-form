@@ -195,14 +195,14 @@
             $(this).closest('.vrf-row').removeClass('vrf-field-required');
         });
 
-        // GST Registration conditional fields
-        $('input[name="gst_registered"]').on('change', function() {
+        // GST Registration conditional fields - scoped to vendor form
+        $form.find('input[name="gst_registered"]').on('change', function() {
             var isGSTYes = $(this).val() === 'yes';
             toggleConditionalFields('.vrf-gst-fields', '.vrf-gst-conditional, .vrf-gst-conditional-radio', isGSTYes, true);
         });
 
-        // MSME Registration conditional fields
-        $('input[name="msme_registered"]').on('change', function() {
+        // MSME Registration conditional fields - scoped to vendor form
+        $form.find('input[name="msme_registered"]').on('change', function() {
             var isMSMEYes = $(this).val() === 'yes';
             toggleConditionalFields('.vrf-msme-yes-fields', '.vrf-msme-conditional', isMSMEYes, true);
             toggleConditionalFields('.vrf-msme-no-fields', '.vrf-msme-no-conditional', !isMSMEYes, true);
@@ -309,8 +309,8 @@
             
             // Special validation for GST radio buttons (Step 2)
             if (current === 2) {
-                var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
-                var gstRadioChecked = $('input[name="gst_registered"]:checked').length > 0;
+                var $gstRow = $currentPanel.find('input[name="gst_registered"]').first().closest('.vrf-row');
+                var gstRadioChecked = $currentPanel.find('input[name="gst_registered"]:checked').length > 0;
                 if (!gstRadioChecked) {
                     $gstRow.addClass('vrf-field-required');
                     showToast('GST Registration: Please select Yes or No', 'error');
@@ -320,11 +320,11 @@
                 }
                 
                 // If GST is Yes, validate GST conditional radios
-                if ($('input[name="gst_registered"]:checked').val() === 'yes') {
-                    var $einvoiceRow = $('input[name="einvoice_applicability"]').first().closest('.vrf-row');
-                    var $filingRow = $('input[name="return_filing_frequency"]').first().closest('.vrf-row');
-                    var einvoiceChecked = $('input[name="einvoice_applicability"]:checked').length > 0;
-                    var filingChecked = $('input[name="return_filing_frequency"]:checked').length > 0;
+                if ($currentPanel.find('input[name="gst_registered"]:checked').val() === 'yes') {
+                    var $einvoiceRow = $currentPanel.find('input[name="einvoice_applicability"]').first().closest('.vrf-row');
+                    var $filingRow = $currentPanel.find('input[name="return_filing_frequency"]').first().closest('.vrf-row');
+                    var einvoiceChecked = $currentPanel.find('input[name="einvoice_applicability"]:checked').length > 0;
+                    var filingChecked = $currentPanel.find('input[name="return_filing_frequency"]:checked').length > 0;
                     
                     if (!einvoiceChecked) {
                         $einvoiceRow.addClass('vrf-field-required');
@@ -346,8 +346,8 @@
             
             // Special validation for MSME radio buttons (Step 3)
             if (current === 3) {
-                var $msmeRow = $('input[name="msme_registered"]').first().closest('.vrf-row');
-                var msmeRadioChecked = $('input[name="msme_registered"]:checked').length > 0;
+                var $msmeRow = $currentPanel.find('input[name="msme_registered"]').first().closest('.vrf-row');
+                var msmeRadioChecked = $currentPanel.find('input[name="msme_registered"]:checked').length > 0;
                 if (!msmeRadioChecked) {
                     $msmeRow.addClass('vrf-field-required');
                     showToast('MSME Registration: Please select Yes or No', 'error');
@@ -434,8 +434,8 @@
             }
             
             // Validate vendor type
-            var $vendorTypeRow = $('.vrf-vendor-type').first().closest('.vrf-row');
-            if ($('.vrf-vendor-type:checked').length === 0) {
+            var $vendorTypeRow = $form.find('.vrf-vendor-type').first().closest('.vrf-row');
+            if ($form.find('.vrf-vendor-type:checked').length === 0) {
                 $vendorTypeRow.addClass('vrf-field-required');
                 showToast('Vendor Type: Please select at least one option', 'error');
                 allOk = false;
@@ -444,8 +444,8 @@
             }
             
             // Validate GST radio
-            var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
-            if ($('input[name="gst_registered"]:checked').length === 0) {
+            var $gstRow = $form.find('input[name="gst_registered"]').first().closest('.vrf-row');
+            if ($form.find('input[name="gst_registered"]:checked').length === 0) {
                 $gstRow.addClass('vrf-field-required');
                 showToast('GST Registration: Please select Yes or No', 'error');
                 allOk = false;
@@ -454,8 +454,8 @@
             }
             
             // Validate MSME radio
-            var $msmeRow = $('input[name="msme_registered"]').first().closest('.vrf-row');
-            if ($('input[name="msme_registered"]:checked').length === 0) {
+            var $msmeRow = $form.find('input[name="msme_registered"]').first().closest('.vrf-row');
+            if ($form.find('input[name="msme_registered"]:checked').length === 0) {
                 $msmeRow.addClass('vrf-field-required');
                 showToast('MSME Registration: Please select Yes or No', 'error');
                 allOk = false;

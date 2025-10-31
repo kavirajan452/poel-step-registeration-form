@@ -168,13 +168,13 @@
             $(this).closest('.vrf-row').removeClass('vrf-field-required');
         });
 
-        // GST Registration conditional fields
-        $('input[name="gst_registered"]').on('change', function() {
+        // GST Registration conditional fields - scoped to customer form
+        $form.find('input[name="gst_registered"]').on('change', function() {
             var isGSTYes = $(this).val() === 'yes';
             toggleConditionalFields('.vrf-gst-fields', '.vrf-gst-conditional', isGSTYes, true);
             // GST number is required when GST registered is Yes
-            $('.vrf-gst-fields input[name="gst_number"]').prop('required', isGSTYes);
-            $('.vrf-gst-fields input[name="gst_certificate"]').prop('required', isGSTYes);
+            $form.find('.vrf-gst-fields input[name="gst_number"]').prop('required', isGSTYes);
+            $form.find('.vrf-gst-fields input[name="gst_certificate"]').prop('required', isGSTYes);
         });
 
         // Country change - load states
@@ -278,8 +278,8 @@
             
             // Special validation for GST radio buttons (Step 2)
             if (current === 2) {
-                var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
-                var gstRadioChecked = $('input[name="gst_registered"]:checked').length > 0;
+                var $gstRow = $currentPanel.find('input[name="gst_registered"]').first().closest('.vrf-row');
+                var gstRadioChecked = $currentPanel.find('input[name="gst_registered"]:checked').length > 0;
                 if (!gstRadioChecked) {
                     $gstRow.addClass('vrf-field-required');
                     showToast('GST Registration: Please select Yes or No', 'error');
@@ -366,8 +366,8 @@
             }
             
             // Validate customer type
-            var $customerTypeRow = $('.vrf-customer-type').first().closest('.vrf-row');
-            if ($('.vrf-customer-type:checked').length === 0) {
+            var $customerTypeRow = $form.find('.vrf-customer-type').first().closest('.vrf-row');
+            if ($form.find('.vrf-customer-type:checked').length === 0) {
                 $customerTypeRow.addClass('vrf-field-required');
                 showToast('Customer Type: Please select at least one option', 'error');
                 allOk = false;
@@ -376,8 +376,8 @@
             }
             
             // Validate GST radio
-            var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
-            if ($('input[name="gst_registered"]:checked').length === 0) {
+            var $gstRow = $form.find('input[name="gst_registered"]').first().closest('.vrf-row');
+            if ($form.find('input[name="gst_registered"]:checked').length === 0) {
                 $gstRow.addClass('vrf-field-required');
                 showToast('GST Registration: Please select Yes or No', 'error');
                 allOk = false;

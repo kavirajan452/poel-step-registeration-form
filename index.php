@@ -1471,14 +1471,47 @@ class VRF_Plugin {
     // Register email settings
     public function register_email_settings() {
         // Vendor form email settings
-        register_setting( 'vrf_email_settings', 'vrf_vendor_admin_email' );
-        register_setting( 'vrf_email_settings', 'vrf_vendor_cc' );
-        register_setting( 'vrf_email_settings', 'vrf_vendor_bcc' );
+        register_setting( 'vrf_email_settings', 'vrf_vendor_admin_email', array(
+            'sanitize_callback' => [ $this, 'sanitize_email_list' ]
+        ) );
+        register_setting( 'vrf_email_settings', 'vrf_vendor_cc', array(
+            'sanitize_callback' => [ $this, 'sanitize_email_list' ]
+        ) );
+        register_setting( 'vrf_email_settings', 'vrf_vendor_bcc', array(
+            'sanitize_callback' => [ $this, 'sanitize_email_list' ]
+        ) );
         
         // Customer form email settings
-        register_setting( 'vrf_email_settings', 'vrf_customer_admin_email' );
-        register_setting( 'vrf_email_settings', 'vrf_customer_cc' );
-        register_setting( 'vrf_email_settings', 'vrf_customer_bcc' );
+        register_setting( 'vrf_email_settings', 'vrf_customer_admin_email', array(
+            'sanitize_callback' => [ $this, 'sanitize_email_list' ]
+        ) );
+        register_setting( 'vrf_email_settings', 'vrf_customer_cc', array(
+            'sanitize_callback' => [ $this, 'sanitize_email_list' ]
+        ) );
+        register_setting( 'vrf_email_settings', 'vrf_customer_bcc', array(
+            'sanitize_callback' => [ $this, 'sanitize_email_list' ]
+        ) );
+    }
+    
+    // Sanitize email list (comma-separated)
+    public function sanitize_email_list( $value ) {
+        if ( empty( $value ) ) {
+            return '';
+        }
+        
+        // Split by comma and trim whitespace
+        $emails = array_map( 'trim', explode( ',', $value ) );
+        
+        // Validate each email
+        $valid_emails = array();
+        foreach ( $emails as $email ) {
+            if ( ! empty( $email ) && is_email( $email ) ) {
+                $valid_emails[] = sanitize_email( $email );
+            }
+        }
+        
+        // Return comma-separated list of valid emails
+        return implode( ', ', $valid_emails );
     }
     
     // Render email settings page
@@ -1489,14 +1522,23 @@ class VRF_Plugin {
         
         // Handle form submission
         if ( isset( $_POST['vrf_email_settings_submit'] ) && check_admin_referer( 'vrf_email_settings_action', 'vrf_email_settings_nonce' ) ) {
-            update_option( 'vrf_vendor_admin_email', sanitize_text_field( $_POST['vrf_vendor_admin_email'] ) );
-            update_option( 'vrf_vendor_cc', sanitize_text_field( $_POST['vrf_vendor_cc'] ) );
-            update_option( 'vrf_vendor_bcc', sanitize_text_field( $_POST['vrf_vendor_bcc'] ) );
-            update_option( 'vrf_customer_admin_email', sanitize_text_field( $_POST['vrf_customer_admin_email'] ) );
-            update_option( 'vrf_customer_cc', sanitize_text_field( $_POST['vrf_customer_cc'] ) );
-            update_option( 'vrf_customer_bcc', sanitize_text_field( $_POST['vrf_customer_bcc'] ) );
+            // Validate required fields
+            $vendor_admin_email = isset( $_POST['vrf_vendor_admin_email'] ) ? $_POST['vrf_vendor_admin_email'] : '';
+            $customer_admin_email = isset( $_POST['vrf_customer_admin_email'] ) ? $_POST['vrf_customer_admin_email'] : '';
             
-            echo '<div class="notice notice-success is-dismissible"><p>Email settings saved successfully.</p></div>';
+            if ( empty( trim( $vendor_admin_email ) ) || empty( trim( $customer_admin_email ) ) ) {
+                echo '<div class="notice notice-error is-dismissible"><p>Admin email recipients are required for both vendor and customer forms.</p></div>';
+            } else {
+                // Sanitize and save
+                update_option( 'vrf_vendor_admin_email', $this->sanitize_email_list( $vendor_admin_email ) );
+                update_option( 'vrf_vendor_cc', $this->sanitize_email_list( $_POST['vrf_vendor_cc'] ) );
+                update_option( 'vrf_vendor_bcc', $this->sanitize_email_list( $_POST['vrf_vendor_bcc'] ) );
+                update_option( 'vrf_customer_admin_email', $this->sanitize_email_list( $customer_admin_email ) );
+                update_option( 'vrf_customer_cc', $this->sanitize_email_list( $_POST['vrf_customer_cc'] ) );
+                update_option( 'vrf_customer_bcc', $this->sanitize_email_list( $_POST['vrf_customer_bcc'] ) );
+                
+                echo '<div class="notice notice-success is-dismissible"><p>Email settings saved successfully.</p></div>';
+            }
         }
         
         // Get current values
@@ -2000,7 +2042,7 @@ class VRF_Plugin {
         if ( $post->post_type === 'registrations' ) {
             unset( $actions['edit'] );
             unset( $actions['trash'] );
-            unset( $actions['inline hide-if-no-js'] );
+            unset( $actions['inline'] ); // Remove quick edit
         }
         
         return $actions;

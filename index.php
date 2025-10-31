@@ -526,7 +526,11 @@ class VRF_Plugin {
             $user_message = $this->get_user_email_template( $data );
             
             $headers = array( 'Content-Type: text/html; charset=UTF-8' );
-            wp_mail( $user_email, $user_subject, $user_message, $headers );
+            $user_email_sent = wp_mail( $user_email, $user_subject, $user_message, $headers );
+            
+            if ( ! $user_email_sent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'VRF: Failed to send user acknowledgement email to ' . $user_email );
+            }
         }
         
         // Send detailed email to admin with data
@@ -545,7 +549,11 @@ class VRF_Plugin {
                 }
             }
             
-            wp_mail( $admin_email, $admin_subject, $admin_message, $headers, $attachments );
+            $admin_email_sent = wp_mail( $admin_email, $admin_subject, $admin_message, $headers, $attachments );
+            
+            if ( ! $admin_email_sent && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( 'VRF: Failed to send admin notification email to ' . $admin_email );
+            }
         }
     }
 

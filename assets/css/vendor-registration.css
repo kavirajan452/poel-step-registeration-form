@@ -149,6 +149,23 @@
     background: #17a2b8;
 }
 
+/* Download Link Styling */
+.vrf-download-link {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #17a2b8;
+    color: #fff !important;
+    text-decoration: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.3s ease;
+}
+
+.vrf-download-link:hover {
+    background: #138496;
+}
+
 @media(max-width:720px) {
     .vrf-row-inline {
         flex-direction: column

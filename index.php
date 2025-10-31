@@ -285,7 +285,7 @@ class VRF_Plugin {
                     <div class="vrf-msme-no-fields" style="display:none;">
                         <div class="vrf-row">
                             <label>MSME Declaration Form</label>
-                            <p><a href="#" id="vrf-msme-declaration-download" class="vrf-download-link" download>Download MSME Declaration Form</a></p>
+                            <p><a href="<?php echo plugin_dir_url( __FILE__ ) . 'assets/documents/MSME_Declaration_Form.txt'; ?>" id="vrf-msme-declaration-download" class="vrf-download-link" download="MSME_Declaration_Form.txt">📥 Download MSME Declaration Form</a></p>
                             <small>Please download, print in letterhead, sign, and seal the form.</small>
                         </div>
 

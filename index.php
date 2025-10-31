@@ -16,11 +16,17 @@ class VRF_Plugin {
         add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
         add_action( 'wp_ajax_vrf_submit', [ $this, 'handle_ajax_submit' ] );
         add_action( 'wp_ajax_nopriv_vrf_submit', [ $this, 'handle_ajax_submit' ] );
+        add_action( 'wp_ajax_vrf_get_states', [ $this, 'ajax_get_states' ] );
+        add_action( 'wp_ajax_nopriv_vrf_get_states', [ $this, 'ajax_get_states' ] );
+        add_action( 'wp_ajax_vrf_get_cities', [ $this, 'ajax_get_cities' ] );
+        add_action( 'wp_ajax_nopriv_vrf_get_cities', [ $this, 'ajax_get_cities' ] );
 
         // Admin columns to show uploaded files with download links
         add_filter( 'manage_registrations_posts_columns', [ $this, 'admin_columns' ] );
         add_action( 'manage_registrations_posts_custom_column', [ $this, 'admin_columns_content' ], 10, 2 );
         add_filter( 'manage_edit-registrations_sortable_columns', function($cols){ return $cols; } );
+        add_filter( 'restrict_manage_posts', [ $this, 'admin_filter_dropdown' ] );
+        add_filter( 'parse_query', [ $this, 'admin_filter_query' ] );
     }
 
     // Register CPT "registrations"
@@ -77,6 +83,7 @@ class VRF_Plugin {
             <form id="vendor-registration-form" class="vrf-form" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="action" value="vrf_submit" />
                 <input type="hidden" name="vrf_nonce" value="<?php echo wp_create_nonce('vrf_nonce'); ?>" />
+                <input type="hidden" name="form_type" value="vendor" />
 
                 <!-- Step 1: Basic Info -->
                 <div class="vrf-panel" data-panel="1">
@@ -114,20 +121,26 @@ class VRF_Plugin {
 
                     <div class="vrf-row">
                         <label>Country</label>
-                        <select name="country">
-                            <option value="India" selected>India</option>
-                            <option value="Other">Other</option>
+                        <select name="country" id="vrf-country">
+                            <option value="">Select Country</option>
+                            <option value="India">India</option>
+                            <option value="USA">USA</option>
+                            <option value="UK">UK</option>
                         </select>
                     </div>
 
                     <div class="vrf-row">
                         <label>State</label>
-                        <input type="text" name="state" />
+                        <select name="state" id="vrf-state">
+                            <option value="">Select State</option>
+                        </select>
                     </div>
 
                     <div class="vrf-row">
                         <label>City</label>
-                        <input type="text" name="city" />
+                        <select name="city" id="vrf-city">
+                            <option value="">Select City</option>
+                        </select>
                     </div>
 
                     <div class="vrf-row">
@@ -323,7 +336,7 @@ class VRF_Plugin {
 
         // Collect fields: we accept any posted fields; sanitize
         $allowed = array(
-            'organisation_name','company_registration_number','iec_code','street_address','street_address_2','country','state','city','zip',
+            'form_type','organisation_name','company_registration_number','iec_code','street_address','street_address_2','country','state','city','zip',
             'products','purchase_contact_name','purchase_contact_phone','purchase_contact_email','accounts_contact_name','accounts_contact_phone','accounts_contact_email',
             'gst_registered','gst_number','gst_legal_name','taxpayer_type',
             'msme_registered','msme_type','udyam_number',
@@ -359,12 +372,35 @@ class VRF_Plugin {
         foreach ( $file_fields as $field ) {
             if ( ! empty( $_FILES[ $field ] ) && ! empty( $_FILES[ $field ]['name'] ) ) {
                 $file = $_FILES[ $field ];
+                
+                // Validate file size (2MB max)
+                $max_size = 2 * 1024 * 1024; // 2MB in bytes
+                if ( $file['size'] > $max_size ) {
+                    wp_send_json_error( array( 'message' => 'File ' . $field . ' exceeds 2MB limit.' ) );
+                }
+                
+                // Validate file type (jpg, jpeg, pdf only)
+                $allowed_types = array('image/jpeg', 'image/jpg', 'application/pdf');
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mime = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+                
+                if ( ! in_array( $mime, $allowed_types ) ) {
+                    wp_send_json_error( array( 'message' => 'File ' . $field . ' must be jpg, jpeg, or pdf format.' ) );
+                }
+                
                 // require WordPress file functions
                 require_once( ABSPATH . 'wp-admin/includes/file.php' );
                 require_once( ABSPATH . 'wp-admin/includes/image.php' );
                 require_once( ABSPATH . 'wp-admin/includes/media.php' );
 
-                $overrides = array( 'test_form' => false ); // allow AJAX
+                $overrides = array( 
+                    'test_form' => false,
+                    'mimes' => array(
+                        'jpg|jpeg|jpe' => 'image/jpeg',
+                        'pdf' => 'application/pdf',
+                    )
+                );
                 $movefile = wp_handle_upload( $file, $overrides );
                 if ( $movefile && empty( $movefile['error'] ) ) {
                     // Insert into media library
@@ -381,6 +417,8 @@ class VRF_Plugin {
                         wp_update_attachment_metadata( $attach_id, $attach_data );
                         $uploaded[ $field ] = $attach_id;
                     }
+                } else {
+                    wp_send_json_error( array( 'message' => 'Failed to upload ' . $field . ': ' . ( $movefile['error'] ?? 'Unknown error' ) ) );
                 }
             }
         }
@@ -420,14 +458,32 @@ class VRF_Plugin {
         $new = array();
         $new['cb'] = $columns['cb'];
         $new['title'] = 'Title';
+        $new['form_type'] = 'Form Type';
+        $new['organisation_name'] = 'Organisation';
+        $new['contact_info'] = 'Contact Info';
         $new['submitted_date'] = 'Submitted';
         $new['files'] = 'Uploaded Files';
-        $new['author'] = 'Author';
         $new['date'] = $columns['date'];
         return $new;
     }
 
     public function admin_columns_content( $column, $post_id ) {
+        if ( $column == 'form_type' ) {
+            $form_type = get_post_meta( $post_id, 'form_type', true );
+            echo esc_html( ucfirst( $form_type ?: 'Unknown' ) );
+        }
+
+        if ( $column == 'organisation_name' ) {
+            $org = get_post_meta( $post_id, 'organisation_name', true );
+            echo esc_html( $org ?: '—' );
+        }
+
+        if ( $column == 'contact_info' ) {
+            $email = get_post_meta( $post_id, 'purchase_contact_email', true );
+            $phone = get_post_meta( $post_id, 'purchase_contact_phone', true );
+            echo esc_html( $email ?: '—' ) . '<br>' . esc_html( $phone ?: '—' );
+        }
+
         if ( $column == 'submitted_date' ) {
             echo get_the_date( '', $post_id );
         }
@@ -457,6 +513,103 @@ class VRF_Plugin {
                 echo implode( '<br>', $out );
             }
         }
+    }
+
+    // Admin filter dropdown
+    public function admin_filter_dropdown( $post_type ) {
+        if ( 'registrations' === $post_type ) {
+            $selected = isset( $_GET['form_type_filter'] ) ? $_GET['form_type_filter'] : '';
+            ?>
+            <select name="form_type_filter">
+                <option value="">All Form Types</option>
+                <option value="vendor" <?php selected( $selected, 'vendor' ); ?>>Vendor</option>
+                <option value="customer" <?php selected( $selected, 'customer' ); ?>>Customer</option>
+            </select>
+            <?php
+        }
+    }
+
+    // Admin filter query
+    public function admin_filter_query( $query ) {
+        global $pagenow;
+        if ( is_admin() && $pagenow === 'edit.php' && isset( $_GET['post_type'] ) && $_GET['post_type'] === 'registrations' && isset( $_GET['form_type_filter'] ) && $_GET['form_type_filter'] !== '' ) {
+            $query->query_vars['meta_key'] = 'form_type';
+            $query->query_vars['meta_value'] = sanitize_text_field( $_GET['form_type_filter'] );
+        }
+    }
+
+    // AJAX handler for getting states based on country
+    public function ajax_get_states() {
+        $country = isset( $_POST['country'] ) ? sanitize_text_field( $_POST['country'] ) : '';
+        
+        $states = array();
+        if ( $country === 'India' ) {
+            $states = array(
+                'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+                'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand',
+                'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur',
+                'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab',
+                'Rajasthan', 'Sikkim', 'Tamil Nadu', 'Telangana', 'Tripura',
+                'Uttar Pradesh', 'Uttarakhand', 'West Bengal'
+            );
+        } elseif ( $country === 'USA' ) {
+            $states = array(
+                'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California',
+                'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia',
+                'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa',
+                'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland',
+                'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri',
+                'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey',
+                'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio',
+                'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina',
+                'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont',
+                'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming'
+            );
+        } elseif ( $country === 'UK' ) {
+            $states = array(
+                'England', 'Scotland', 'Wales', 'Northern Ireland'
+            );
+        }
+        
+        wp_send_json_success( array( 'states' => $states ) );
+    }
+
+    // AJAX handler for getting cities based on state
+    public function ajax_get_cities() {
+        $state = isset( $_POST['state'] ) ? sanitize_text_field( $_POST['state'] ) : '';
+        
+        $cities = array();
+        // Sample cities for major Indian states
+        if ( $state === 'Tamil Nadu' ) {
+            $cities = array('Chennai', 'Coimbatore', 'Madurai', 'Tiruchirappalli', 'Salem', 'Tirunelveli');
+        } elseif ( $state === 'Maharashtra' ) {
+            $cities = array('Mumbai', 'Pune', 'Nagpur', 'Thane', 'Nashik', 'Aurangabad');
+        } elseif ( $state === 'Karnataka' ) {
+            $cities = array('Bangalore', 'Mysore', 'Mangalore', 'Hubli', 'Belgaum', 'Gulbarga');
+        } elseif ( $state === 'Delhi' ) {
+            $cities = array('New Delhi', 'Central Delhi', 'North Delhi', 'South Delhi', 'East Delhi', 'West Delhi');
+        } elseif ( $state === 'Gujarat' ) {
+            $cities = array('Ahmedabad', 'Surat', 'Vadodara', 'Rajkot', 'Bhavnagar', 'Jamnagar');
+        } elseif ( $state === 'Rajasthan' ) {
+            $cities = array('Jaipur', 'Jodhpur', 'Kota', 'Udaipur', 'Ajmer', 'Bikaner');
+        } elseif ( $state === 'Uttar Pradesh' ) {
+            $cities = array('Lucknow', 'Kanpur', 'Ghaziabad', 'Agra', 'Varanasi', 'Meerut');
+        } elseif ( $state === 'West Bengal' ) {
+            $cities = array('Kolkata', 'Howrah', 'Durgapur', 'Asansol', 'Siliguri');
+        } elseif ( $state === 'California' ) {
+            $cities = array('Los Angeles', 'San Francisco', 'San Diego', 'San Jose', 'Sacramento');
+        } elseif ( $state === 'New York' ) {
+            $cities = array('New York City', 'Buffalo', 'Rochester', 'Yonkers', 'Syracuse');
+        } elseif ( $state === 'Texas' ) {
+            $cities = array('Houston', 'Dallas', 'Austin', 'San Antonio', 'Fort Worth');
+        } elseif ( $state === 'England' ) {
+            $cities = array('London', 'Manchester', 'Birmingham', 'Liverpool', 'Leeds');
+        } else {
+            // Generic cities for other states
+            $cities = array('City 1', 'City 2', 'City 3', 'City 4', 'City 5');
+        }
+        
+        wp_send_json_success( array( 'cities' => $cities ) );
     }
 
 }

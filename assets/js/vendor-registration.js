@@ -12,7 +12,7 @@
             // Remove existing toast
             $('.vrf-toast').remove();
             
-            var $toast = $('<div class="vrf-toast vrf-toast-' + type + '">' + message + '</div>');
+            var $toast = $('<div class="vrf-toast"></div>').addClass('vrf-toast-' + type).text(message);
             $('body').append($toast);
             
             setTimeout(function() {

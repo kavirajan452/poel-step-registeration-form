@@ -12,7 +12,7 @@
             // Remove existing toast
             $('.vrf-toast').remove();
             
-            var $toast = $('<div class="vrf-toast vrf-toast-' + type + '">' + message + '</div>');
+            var $toast = $('<div class="vrf-toast"></div>').addClass('vrf-toast-' + type).text(message);
             $('body').append($toast);
             
             setTimeout(function() {
@@ -170,7 +170,9 @@
                 $this.addClass('vrf-invalid');
                 $this.after('<span class="vrf-error">' + result + '</span>');
                 $this.val('');
-                showToast(result, 'error');
+                // Get field label for better toast message
+                var fieldLabel = $this.closest('.vrf-row').find('label').first().text().replace(' *', '').trim();
+                showToast(fieldLabel + ': ' + result, 'error');
             }
         });
 
@@ -190,6 +192,11 @@
                 $fields.filter(':radio').prop('checked', false);
             }
         }
+
+        // Remove highlight on checkbox/radio selection
+        $form.on('change', 'input[type="checkbox"], input[type="radio"]', function() {
+            $(this).closest('.vrf-row').removeClass('vrf-field-required');
+        });
 
         // GST Registration conditional fields
         $('input[name="gst_registered"]').on('change', function() {
@@ -292,38 +299,64 @@
             
             // Special validation for vendor type checkboxes (Step 1)
             if (current === 1) {
+                var $vendorTypeRow = $currentPanel.find('.vrf-vendor-type').first().closest('.vrf-row');
                 var vendorTypeChecked = $currentPanel.find('.vrf-vendor-type:checked').length > 0;
                 if (!vendorTypeChecked) {
-                    showToast('Please select at least one Vendor Type', 'error');
+                    $vendorTypeRow.addClass('vrf-field-required');
+                    showToast('Vendor Type: Please select at least one option', 'error');
                     isValid = false;
+                } else {
+                    $vendorTypeRow.removeClass('vrf-field-required');
                 }
             }
             
             // Special validation for GST radio buttons (Step 2)
             if (current === 2) {
+                var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
                 var gstRadioChecked = $('input[name="gst_registered"]:checked').length > 0;
                 if (!gstRadioChecked) {
-                    showToast('Please select GST Registration status', 'error');
+                    $gstRow.addClass('vrf-field-required');
+                    showToast('GST Registration: Please select Yes or No', 'error');
                     isValid = false;
+                } else {
+                    $gstRow.removeClass('vrf-field-required');
                 }
                 
                 // If GST is Yes, validate GST conditional radios
                 if ($('input[name="gst_registered"]:checked').val() === 'yes') {
+                    var $einvoiceRow = $('input[name="einvoice_applicability"]').first().closest('.vrf-row');
+                    var $filingRow = $('input[name="return_filing_frequency"]').first().closest('.vrf-row');
                     var einvoiceChecked = $('input[name="einvoice_applicability"]:checked').length > 0;
                     var filingChecked = $('input[name="return_filing_frequency"]:checked').length > 0;
-                    if (!einvoiceChecked || !filingChecked) {
-                        showToast('Please fill all required GST fields', 'error');
+                    
+                    if (!einvoiceChecked) {
+                        $einvoiceRow.addClass('vrf-field-required');
+                        showToast('E-Invoice Applicability: Please select an option', 'error');
                         isValid = false;
+                    } else {
+                        $einvoiceRow.removeClass('vrf-field-required');
+                    }
+                    
+                    if (!filingChecked) {
+                        $filingRow.addClass('vrf-field-required');
+                        showToast('Return Filing Frequency: Please select an option', 'error');
+                        isValid = false;
+                    } else {
+                        $filingRow.removeClass('vrf-field-required');
                     }
                 }
             }
             
             // Special validation for MSME radio buttons (Step 3)
             if (current === 3) {
+                var $msmeRow = $('input[name="msme_registered"]').first().closest('.vrf-row');
                 var msmeRadioChecked = $('input[name="msme_registered"]:checked').length > 0;
                 if (!msmeRadioChecked) {
-                    showToast('Please select MSME Registration status', 'error');
+                    $msmeRow.addClass('vrf-field-required');
+                    showToast('MSME Registration: Please select Yes or No', 'error');
                     isValid = false;
+                } else {
+                    $msmeRow.removeClass('vrf-field-required');
                 }
             }
             
@@ -372,30 +405,43 @@
             }
             
             // Validate vendor type
+            var $vendorTypeRow = $('.vrf-vendor-type').first().closest('.vrf-row');
             if ($('.vrf-vendor-type:checked').length === 0) {
-                showToast('Please select at least one Vendor Type', 'error');
+                $vendorTypeRow.addClass('vrf-field-required');
+                showToast('Vendor Type: Please select at least one option', 'error');
                 allOk = false;
+            } else {
+                $vendorTypeRow.removeClass('vrf-field-required');
             }
             
             // Validate GST radio
+            var $gstRow = $('input[name="gst_registered"]').first().closest('.vrf-row');
             if ($('input[name="gst_registered"]:checked').length === 0) {
-                showToast('Please select GST Registration status', 'error');
+                $gstRow.addClass('vrf-field-required');
+                showToast('GST Registration: Please select Yes or No', 'error');
                 allOk = false;
+            } else {
+                $gstRow.removeClass('vrf-field-required');
             }
             
             // Validate MSME radio
+            var $msmeRow = $('input[name="msme_registered"]').first().closest('.vrf-row');
             if ($('input[name="msme_registered"]:checked').length === 0) {
-                showToast('Please select MSME Registration status', 'error');
+                $msmeRow.addClass('vrf-field-required');
+                showToast('MSME Registration: Please select Yes or No', 'error');
                 allOk = false;
+            } else {
+                $msmeRow.removeClass('vrf-field-required');
             }
             
             if (!allOk) {
-                showToast('Please fill all required fields correctly', 'error');
-                // Navigate to first invalid
-                var $first = $form.find('.vrf-invalid:visible').first();
+                // Navigate to first invalid field or first required radio/checkbox
+                var $first = $form.find('.vrf-invalid:visible, .vrf-field-required').first();
                 if ($first.length > 0) {
                     var $panel = $first.closest('.vrf-panel');
-                    showPanel(parseInt($panel.data('panel'),10));
+                    if ($panel.length > 0) {
+                        showPanel(parseInt($panel.data('panel'),10));
+                    }
                 }
                 return;
             }

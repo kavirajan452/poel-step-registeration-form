@@ -109,6 +109,18 @@
     margin-top: 4px;
 }
 
+/* Radio and checkbox required field highlighting */
+.vrf-row.vrf-field-required {
+    border-left: 3px solid #ef2927;
+    padding-left: 10px;
+    background: rgba(239, 41, 39, 0.03);
+}
+
+.vrf-row.vrf-field-required > label:first-child {
+    color: #ef2927;
+    font-weight: 500;
+}
+
 #vrf-message {
     margin-top: 12px;
     text-align: center

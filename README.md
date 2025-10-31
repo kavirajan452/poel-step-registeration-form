@@ -1,16 +1,20 @@
-# Vendor Registration Form - WordPress Plugin
+# Vendor & Customer Registration Forms - WordPress Plugin
 
-A comprehensive multi-step vendor registration form plugin for WordPress that collects vendor information, validates inputs in real-time, and stores submissions in a custom post type.
+A comprehensive multi-step registration form plugin for WordPress that collects vendor and customer information, validates inputs in real-time, and stores submissions in a custom post type.
 
 ## Features
 
 ### 1. Multi-Step Form Interface
-- 5-step registration process:
+- **Vendor Form** (5-step registration process):
   - **Step 1**: Basic Information (Organisation details, address, contacts)
   - **Step 2**: GST Registration
   - **Step 3**: MSME Registration
   - **Step 4**: Bank Details
   - **Step 5**: TDS Information
+- **Customer Form** (3-step registration process):
+  - **Step 1**: Basic Information (Organisation details, address, contacts)
+  - **Step 2**: GST Registration
+  - **Step 3**: TDS Details (including TAN number)
 - Visual step indicators with navigation
 - Form validation before proceeding to next step
 
@@ -83,9 +87,15 @@ A comprehensive multi-step vendor registration form plugin for WordPress that co
 
 ## Usage
 
-### Frontend - Display Form
+### Frontend - Display Forms
+**Vendor Registration Form:**
 ```
 [vendor_registration_form]
+```
+
+**Customer Registration Form:**
+```
+[customer_registration_form]
 ```
 
 ### Backend - View Registrations
@@ -172,16 +182,18 @@ All form data is stored as post meta:
 - PHP 7.0+
 
 ## Recent Enhancements (v1.1)
+- ✅ **Customer Registration Form**: New 3-step customer registration form with TAN number validation
 - ✅ **Email Notifications**: User acknowledgement and admin notification with files
 - ✅ **Field-Level Toast Alerts**: Toast messages now include specific field names
 - ✅ **Radio/Checkbox Highlighting**: Visual indicators for required selections
 - ✅ **Enhanced Navigation**: Auto-jump to first missing field on submission
+- ✅ **TAN Number Validation**: Real-time validation for TAN number format (ABCD12345E)
+- ✅ **Customer Type Field**: Checkbox group for Goods and Services selection
 
-For detailed information about these enhancements, see [ENHANCEMENTS.md](ENHANCEMENTS.md)
+For detailed information about the customer form, see [CUSTOMER_FORM_USAGE.md](CUSTOMER_FORM_USAGE.md)
 
 ## Future Enhancements
 This plugin is designed to be extensible. Future versions may include:
-- Customer registration form variant
 - Export functionality for registrations
 - Custom email templates with admin UI
 - Additional location data
@@ -192,7 +204,7 @@ This plugin is designed to be extensible. Future versions may include:
 Developed with GitHub Copilot
 
 ## Version
-1.0
+1.1
 
 ## License
 This plugin is provided as-is for the specific use case described.

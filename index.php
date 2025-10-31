@@ -1,8 +1,8 @@
 <?php
 /*
-Plugin Name: Vendor Registration Form
-Description: Multi-step vendor registration form shortcode, stores submissions as custom post type 'registrations' with file attachments and displays downloads in admin.
-Version: 1.0
+Plugin Name: Vendor & Customer Registration Forms
+Description: Multi-step vendor and customer registration forms with shortcodes, stores submissions as custom post type 'registrations' with file attachments and displays downloads in admin.
+Version: 1.1
 Author: GitHub Copilot (adapted)
 */
 

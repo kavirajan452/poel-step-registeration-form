@@ -1531,11 +1531,11 @@ class VRF_Plugin {
             } else {
                 // Sanitize and save
                 update_option( 'vrf_vendor_admin_email', $this->sanitize_email_list( $vendor_admin_email ) );
-                update_option( 'vrf_vendor_cc', $this->sanitize_email_list( $_POST['vrf_vendor_cc'] ) );
-                update_option( 'vrf_vendor_bcc', $this->sanitize_email_list( $_POST['vrf_vendor_bcc'] ) );
+                update_option( 'vrf_vendor_cc', $this->sanitize_email_list( $_POST['vrf_vendor_cc'] ?? '' ) );
+                update_option( 'vrf_vendor_bcc', $this->sanitize_email_list( $_POST['vrf_vendor_bcc'] ?? '' ) );
                 update_option( 'vrf_customer_admin_email', $this->sanitize_email_list( $customer_admin_email ) );
-                update_option( 'vrf_customer_cc', $this->sanitize_email_list( $_POST['vrf_customer_cc'] ) );
-                update_option( 'vrf_customer_bcc', $this->sanitize_email_list( $_POST['vrf_customer_bcc'] ) );
+                update_option( 'vrf_customer_cc', $this->sanitize_email_list( $_POST['vrf_customer_cc'] ?? '' ) );
+                update_option( 'vrf_customer_bcc', $this->sanitize_email_list( $_POST['vrf_customer_bcc'] ?? '' ) );
                 
                 echo '<div class="notice notice-success is-dismissible"><p>Email settings saved successfully.</p></div>';
             }
@@ -2042,7 +2042,7 @@ class VRF_Plugin {
         if ( $post->post_type === 'registrations' ) {
             unset( $actions['edit'] );
             unset( $actions['trash'] );
-            unset( $actions['inline'] ); // Remove quick edit
+            unset( $actions['inline'] ); // Remove inline/quick edit
         }
         
         return $actions;
